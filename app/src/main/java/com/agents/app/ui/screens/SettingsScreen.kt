@@ -56,7 +56,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.headlineSmall
             )
 
-            HorizontalDivider()
+            Divider()
 
             // API Key Section
             Text(
@@ -83,7 +83,7 @@ fun SettingsScreen(
                 }
             )
 
-            HorizontalDivider()
+            Divider()
 
             // Ollama Section
             Text(
@@ -98,7 +98,7 @@ fun SettingsScreen(
                 placeholder = { Text("http://localhost:11434") }
             )
 
-            HorizontalDivider()
+            Divider()
 
             Button(
                 onClick = {
