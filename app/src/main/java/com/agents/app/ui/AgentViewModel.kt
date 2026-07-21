@@ -24,7 +24,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _apiKey = MutableStateFlow("")
+    private val _apiKey = MutableStateFlow("sk-jXicvalIVkR6pxFsC7o3udE4LNufJcQrz3FjP635N9sJaSCZrjgyCmRd6AiS1iOf")
     val apiKey: StateFlow<String> = _apiKey.asStateFlow()
 
     private val _ollamaUrl = MutableStateFlow("http://localhost:11434")
