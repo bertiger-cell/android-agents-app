@@ -8,7 +8,8 @@ import java.util.UUID
 enum class AIProvider {
     OPENAI,
     ANTHROPIC,
-    OLLAMA
+    OLLAMA,
+    OPENCODE
 }
 
 // Agent Status

@@ -149,6 +149,7 @@ fun CreateAgentScreen(
                                     AIProvider.OPENAI -> "gpt-4"
                                     AIProvider.ANTHROPIC -> "claude-3-opus-20240229"
                                     AIProvider.OLLAMA -> "llama2"
+                                    AIProvider.OPENCODE -> "big-pickle"
                                 }
                             }
                         )

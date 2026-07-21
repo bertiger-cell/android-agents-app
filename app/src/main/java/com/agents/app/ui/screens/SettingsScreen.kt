@@ -134,6 +134,10 @@ fun SettingsScreen(
                         text = "• Ollama: Any locally hosted model",
                         style = MaterialTheme.typography.bodyMedium
                     )
+                    Text(
+                        text = "• OpenCode: Local AI coding agent (port 4096)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
                 }
             }
         }
