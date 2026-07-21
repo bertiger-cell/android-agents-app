@@ -30,7 +30,7 @@ fun CreateAgentScreen(
     var description by remember { mutableStateOf("") }
     var systemPrompt by remember { mutableStateOf("You are a helpful AI assistant.") }
     var model by remember { mutableStateOf("gpt-4") }
-    var temperature by remember { mutableFloatStateOf(0.7f) }
+    var temperature by remember { mutableStateOf(0.7f) }
     var selectedType by remember { mutableStateOf(AgentType.GENERAL) }
     var selectedProvider by remember { mutableStateOf(AIProvider.OPENAI) }
 

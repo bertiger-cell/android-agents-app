@@ -41,8 +41,8 @@ class AIProviderService {
 
             return@withContext AgentResult(
                 success = true,
-                output = response.output,
-                tokensUsed = response.tokensUsed,
+                output = response.first,
+                tokensUsed = response.second,
                 executionTimeMs = executionTime
             )
         } catch (e: Exception) {

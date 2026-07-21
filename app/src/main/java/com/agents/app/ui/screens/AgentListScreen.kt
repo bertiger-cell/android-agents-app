@@ -79,6 +79,7 @@ fun AgentListScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentCard(
     agent: Agent,
