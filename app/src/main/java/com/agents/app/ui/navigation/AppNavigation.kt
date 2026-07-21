@@ -40,6 +40,8 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
         // Create Agent Screen
         composable("create") {
             CreateAgentScreen(
+                currentApiKey = apiKey,
+                currentOllamaUrl = ollamaUrl,
                 onNavigateBack = { navController.popBackStack() },
                 onCreateAgent = { name, description, type, provider, systemPrompt, model, temperature ->
                     viewModel.createAgent(
@@ -51,7 +53,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                         model = model,
                         temperature = temperature
                     )
-                }
+                },
+                onUpdateApiKey = { viewModel.updateApiKey(it) },
+                onUpdateOllamaUrl = { viewModel.updateOllamaUrl(it) }
             )
         }
 
@@ -62,12 +66,16 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                     agent = agent,
                     messages = messages,
                     isLoading = isLoading,
+                    apiKeyAvailable = apiKey.isNotBlank(),
                     onSendMessage = { message ->
                         viewModel.sendMessage(message)
                     },
                     onNavigateBack = {
                         viewModel.selectAgent(null)
                         navController.popBackStack()
+                    },
+                    onSettings = {
+                        navController.navigate("settings")
                     }
                 )
             }
