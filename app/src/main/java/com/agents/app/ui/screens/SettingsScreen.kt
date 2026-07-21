@@ -135,7 +135,7 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        text = "• OpenCode: Local AI coding agent (port 4096)",
+                        text = "• OpenCode Zen: Curated AI models (big-pickle free!)",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }

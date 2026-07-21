@@ -149,7 +149,7 @@ fun CreateAgentScreen(
                                     AIProvider.OPENAI -> "gpt-4"
                                     AIProvider.ANTHROPIC -> "claude-3-opus-20240229"
                                     AIProvider.OLLAMA -> "llama2"
-                                    AIProvider.OPENCODE -> "big-pickle"
+                                    AIProvider.ZEN -> "big-pickle"
                                 }
                             }
                         )
@@ -157,7 +157,7 @@ fun CreateAgentScreen(
                 }
             }
 
-            // API Key (shown for OpenAI/Anthropic)
+            // API Key (shown for OpenAI/Anthropic/Zen)
             if (selectedProvider != AIProvider.OLLAMA) {
                 OutlinedTextField(
                     value = apiKey,

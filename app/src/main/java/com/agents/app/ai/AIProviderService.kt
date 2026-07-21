@@ -35,7 +35,7 @@ class AIProviderService {
                 AIProvider.OPENAI -> callOpenAI(apiKey, model, messages, maxTokens, temperature)
                 AIProvider.ANTHROPIC -> callAnthropic(apiKey, model, messages, maxTokens, temperature)
                 AIProvider.OLLAMA -> callOllama(baseUrl, model, messages, temperature)
-                AIProvider.OPENCODE -> callOpenCode(baseUrl, model, messages, temperature)
+                AIProvider.ZEN -> callZen(apiKey, model, messages, maxTokens, temperature)
             }
 
             val executionTime = System.currentTimeMillis() - startTime
@@ -175,84 +175,42 @@ class AIProviderService {
         return Pair(output, 0) // Ollama doesn't return token count
     }
 
-    private fun callOpenCode(
-        baseUrl: String,
+    private fun callZen(
+        apiKey: String,
         model: String,
         messages: List<ApiMessage>,
+        maxTokens: Int,
         temperature: Float
     ): Pair<String, Int> {
-        val serverUrl = baseUrl.ifBlank { "http://localhost:4096" }
-
-        // Build the prompt from messages
-        val systemMessage = messages.find { it.role == "system" }?.content ?: ""
-        val userMessages = messages.filter { it.role == "system" }
-        val fullPrompt = buildString {
-            if (systemMessage.isNotBlank()) {
-                appendLine("System: $systemMessage")
-                appendLine()
-            }
-            userMessages.forEach { msg ->
-                appendLine("${msg.role}: ${msg.content}")
-            }
-        }.trim()
-
-        // Create a session
-        val createSessionBody = mapOf(
-            "title" to "Android Agents Chat"
+        val requestBody = mapOf(
+            "model" to model,
+            "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
+            "max_tokens" to maxTokens,
+            "temperature" to temperature
         )
-        val createSessionJson = gson.toJson(createSessionBody)
+
+        val json = gson.toJson(requestBody)
         val mediaType = "application/json".toMediaType()
-        val createSessionReqBody = createSessionJson.toRequestBody(mediaType)
+        val body = json.toRequestBody(mediaType)
 
-        val createSessionRequest = Request.Builder()
-            .url("$serverUrl/session/create")
+        val request = Request.Builder()
+            .url("https://opencode.ai/zen/v1/chat/completions")
+            .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
-            .post(createSessionReqBody)
+            .post(body)
             .build()
 
-        val createSessionResponse = client.newCall(createSessionRequest).execute()
-        val createSessionResponseBody = createSessionResponse.body?.string()
-            ?: throw Exception("Empty response from OpenCode session create")
+        val response = client.newCall(request).execute()
+        val responseBody = response.body?.string() ?: throw Exception("Empty response")
 
-        if (!createSessionResponse.isSuccessful) {
-            throw Exception("OpenCode session create error: $createSessionResponseBody")
+        if (!response.isSuccessful) {
+            throw Exception("OpenCode Zen error: $responseBody")
         }
 
-        // Parse session ID from response
-        val sessionObj = gson.fromJson(createSessionResponseBody, com.google.gson.JsonObject::class.java)
-        val sessionId = sessionObj.get("id")?.asString
-            ?: throw Exception("No session ID in OpenCode response")
+        val zenResponse = gson.fromJson(responseBody, OpenAIResponse::class.java)
+        val output = zenResponse.choices?.firstOrNull()?.message?.content ?: ""
+        val tokens = zenResponse.usage?.total_tokens ?: 0
 
-        // Send prompt
-        val promptBody = mapOf(
-            "parts" to listOf(mapOf("type" to "text", "text" to fullPrompt))
-        )
-        val promptJson = gson.toJson(promptBody)
-        val promptReqBody = promptJson.toRequestBody(mediaType)
-
-        val promptRequest = Request.Builder()
-            .url("$serverUrl/session/$sessionId/prompt")
-            .addHeader("Content-Type", "application/json")
-            .post(promptReqBody)
-            .build()
-
-        val promptResponse = client.newCall(promptRequest).execute()
-        val promptResponseBody = promptResponse.body?.string()
-            ?: throw Exception("Empty response from OpenCode prompt")
-
-        if (!promptResponse.isSuccessful) {
-            throw Exception("OpenCode prompt error: $promptResponseBody")
-        }
-
-        // Parse response
-        val promptResult = gson.fromJson(promptResponseBody, com.google.gson.JsonObject::class.java)
-
-        // Try to get the assistant message content
-        val info = promptResult.getAsJsonObject("info")
-        val output = info?.get("content")?.asString
-            ?: promptResult.get("text")?.asString
-            ?: ""
-
-        return Pair(output, 0)
+        return Pair(output, tokens)
     }
 }

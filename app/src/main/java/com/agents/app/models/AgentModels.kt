@@ -9,7 +9,7 @@ enum class AIProvider {
     OPENAI,
     ANTHROPIC,
     OLLAMA,
-    OPENCODE
+    ZEN
 }
 
 // Agent Status
