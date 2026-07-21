@@ -40,7 +40,7 @@ fun CreateAgentScreen(
     var model by remember { mutableStateOf("gpt-4") }
     var temperature by remember { mutableStateOf(0.7f) }
     var selectedType by remember { mutableStateOf(AgentType.GENERAL) }
-    var selectedProvider by remember { mutableStateOf(AIProvider.OPENAI) }
+    var selectedProvider by remember { mutableStateOf(AIProvider.OPENROUTER) }
     var apiKey by remember { mutableStateOf(currentApiKey) }
     var ollamaUrl by remember { mutableStateOf(currentOllamaUrl) }
     var showApiKey by remember { mutableStateOf(false) }
@@ -146,8 +146,7 @@ fun CreateAgentScreen(
                                 providerExpanded = false
                                 // Set default model based on provider
                                 model = when (provider) {
-                                    AIProvider.OPENAI -> "gpt-4"
-                                    AIProvider.ANTHROPIC -> "claude-3-opus-20240229"
+                                    AIProvider.OPENROUTER -> "openai/gpt-4o"
                                     AIProvider.OLLAMA -> "llama2"
                                     AIProvider.ZEN -> "big-pickle"
                                 }

@@ -21,9 +21,9 @@ android {
         }
 
         // Multi-Provider API Keys
-        buildConfigField("String", "OPENAI_API_KEY", "\"\"")
-        buildConfigField("String", "ANTHROPIC_API_KEY", "\"\"")
+        buildConfigField("String", "OPENROUTER_API_KEY", "\"\"")
         buildConfigField("String", "OLLAMA_BASE_URL", "\"http://localhost:11434\"")
+        buildConfigField("String", "ZEN_API_KEY", "\"\"")
     }
 
     buildTypes {

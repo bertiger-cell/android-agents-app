@@ -6,8 +6,7 @@ import java.util.UUID
 
 // AI Provider Types
 enum class AIProvider {
-    OPENAI,
-    ANTHROPIC,
+    OPENROUTER,
     OLLAMA,
     ZEN
 }
@@ -39,7 +38,7 @@ data class Agent(
     val name: String,
     val description: String,
     val type: AgentType = AgentType.GENERAL,
-    val provider: AIProvider = AIProvider.OPENAI,
+    val provider: AIProvider = AIProvider.OPENROUTER,
     val systemPrompt: String = "You are a helpful AI assistant.",
     val model: String = "gpt-4",
     val maxTokens: Int = 4096,

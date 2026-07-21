@@ -32,8 +32,7 @@ class AIProviderService {
 
         try {
             val response = when (provider) {
-                AIProvider.OPENAI -> callOpenAI(apiKey, model, messages, maxTokens, temperature)
-                AIProvider.ANTHROPIC -> callAnthropic(apiKey, model, messages, maxTokens, temperature)
+                AIProvider.OPENROUTER -> callOpenRouter(apiKey, model, messages, maxTokens, temperature)
                 AIProvider.OLLAMA -> callOllama(baseUrl, model, messages, temperature)
                 AIProvider.ZEN -> callZen(apiKey, model, messages, maxTokens, temperature)
             }
@@ -56,7 +55,7 @@ class AIProviderService {
         }
     }
 
-    private fun callOpenAI(
+    private fun callOpenRouter(
         apiKey: String,
         model: String,
         messages: List<ApiMessage>,
@@ -75,9 +74,11 @@ class AIProviderService {
         val body = json.toRequestBody(mediaType)
 
         val request = Request.Builder()
-            .url("https://api.openai.com/v1/chat/completions")
+            .url("https://openrouter.ai/api/v1/chat/completions")
             .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
+            .addHeader("HTTP-Referer", "https://github.com/bertiger-cell/android-agents-app")
+            .addHeader("X-Title", "Android Agents App")
             .post(body)
             .build()
 
@@ -85,57 +86,12 @@ class AIProviderService {
         val responseBody = response.body?.string() ?: throw Exception("Empty response")
 
         if (!response.isSuccessful) {
-            throw Exception("OpenAI API error: $responseBody")
+            throw Exception("OpenRouter error: $responseBody")
         }
 
-        val openAIResponse = gson.fromJson(responseBody, OpenAIResponse::class.java)
-        val output = openAIResponse.choices?.firstOrNull()?.message?.content ?: ""
-        val tokens = openAIResponse.usage?.total_tokens ?: 0
-
-        return Pair(output, tokens)
-    }
-
-    private fun callAnthropic(
-        apiKey: String,
-        model: String,
-        messages: List<ApiMessage>,
-        maxTokens: Int,
-        temperature: Float
-    ): Pair<String, Int> {
-        val systemMessage = messages.find { it.role == "system" }?.content ?: ""
-        val userMessages = messages.filter { it.role != "system" }
-
-        val requestBody = mapOf(
-            "model" to model,
-            "max_tokens" to maxTokens,
-            "temperature" to temperature,
-            "system" to systemMessage,
-            "messages" to userMessages.map { mapOf("role" to it.role, "content" to it.content) }
-        )
-
-        val json = gson.toJson(requestBody)
-        val mediaType = "application/json".toMediaType()
-        val body = json.toRequestBody(mediaType)
-
-        val request = Request.Builder()
-            .url("https://api.anthropic.com/v1/messages")
-            .addHeader("x-api-key", apiKey)
-            .addHeader("anthropic-version", "2023-06-01")
-            .addHeader("Content-Type", "application/json")
-            .post(body)
-            .build()
-
-        val response = client.newCall(request).execute()
-        val responseBody = response.body?.string() ?: throw Exception("Empty response")
-
-        if (!response.isSuccessful) {
-            throw Exception("Anthropic API error: $responseBody")
-        }
-
-        val anthropicResponse = gson.fromJson(responseBody, AnthropicResponse::class.java)
-        val output = anthropicResponse.content?.firstOrNull { it.type == "text" }?.text ?: ""
-        val tokens = (anthropicResponse.usage?.input_tokens ?: 0) +
-                (anthropicResponse.usage?.output_tokens ?: 0)
+        val openRouterResponse = gson.fromJson(responseBody, OpenAIResponse::class.java)
+        val output = openRouterResponse.choices?.firstOrNull()?.message?.content ?: ""
+        val tokens = openRouterResponse.usage?.total_tokens ?: 0
 
         return Pair(output, tokens)
     }
@@ -172,7 +128,7 @@ class AIProviderService {
         val ollamaResponse = gson.fromJson(responseBody, OllamaResponse::class.java)
         val output = ollamaResponse.response ?: ""
 
-        return Pair(output, 0) // Ollama doesn't return token count
+        return Pair(output, 0)
     }
 
     private fun callZen(

@@ -123,11 +123,7 @@ fun SettingsScreen(
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(
-                        text = "• OpenAI: GPT-4, GPT-3.5-turbo",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "• Anthropic: Claude 3 Opus, Sonnet",
+                        text = "• OpenRouter: 200+ models (GPT-4o, Claude, Llama, etc.)",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
