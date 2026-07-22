@@ -133,7 +133,7 @@ class AIProviderService {
         }
 
         val ollamaResponse = gson.fromJson(responseBody, OllamaResponse::class.java)
-        val output = ollamaResponse.response ?: ""
+        val output = ollamaResponse.message?.content ?: ""
 
         return Pair(output, 0)
     }

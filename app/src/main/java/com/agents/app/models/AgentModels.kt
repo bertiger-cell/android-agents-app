@@ -131,8 +131,13 @@ data class AnthropicUsage(
 // Ollama Response
 data class OllamaResponse(
     val model: String?,
-    val response: String?,
+    val message: OllamaMessage?,
     val done: Boolean?
+)
+
+data class OllamaMessage(
+    val role: String?,
+    val content: String?
 )
 
 // Automation Task
