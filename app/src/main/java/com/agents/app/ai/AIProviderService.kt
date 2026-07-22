@@ -32,9 +32,29 @@ class AIProviderService {
 
         try {
             val response = when (provider) {
-                AIProvider.OPENROUTER -> callOpenRouter(apiKey, model, messages, maxTokens, temperature)
+                AIProvider.OPENROUTER -> callOpenAiCompatible(
+                    endpoint = "https://openrouter.ai/api/v1/chat/completions",
+                    apiKey = apiKey,
+                    model = model,
+                    messages = messages,
+                    maxTokens = maxTokens,
+                    temperature = temperature,
+                    providerName = "OpenRouter",
+                    extraHeaders = mapOf(
+                        "HTTP-Referer" to "https://github.com/bertiger-cell/android-agents-app",
+                        "X-Title" to "Android Agents App"
+                    )
+                )
                 AIProvider.OLLAMA -> callOllama(apiKey, baseUrl, model, messages, temperature)
-                AIProvider.ZEN -> callZen(apiKey, model, messages, maxTokens, temperature)
+                AIProvider.ZEN -> callOpenAiCompatible(
+                    endpoint = "https://opencode.ai/zen/v1/chat/completions",
+                    apiKey = apiKey,
+                    model = model,
+                    messages = messages,
+                    maxTokens = maxTokens,
+                    temperature = temperature,
+                    providerName = "OpenCode Zen"
+                )
             }
 
             val executionTime = System.currentTimeMillis() - startTime
@@ -55,12 +75,15 @@ class AIProviderService {
         }
     }
 
-    private fun callOpenRouter(
+    private fun callOpenAiCompatible(
+        endpoint: String,
         apiKey: String,
         model: String,
         messages: List<ApiMessage>,
         maxTokens: Int,
-        temperature: Float
+        temperature: Float,
+        providerName: String,
+        extraHeaders: Map<String, String> = emptyMap()
     ): Pair<String, Int> {
         val requestBody = mapOf(
             "model" to model,
@@ -73,12 +96,16 @@ class AIProviderService {
         val mediaType = "application/json".toMediaType()
         val body = json.toRequestBody(mediaType)
 
-        val request = Request.Builder()
-            .url("https://openrouter.ai/api/v1/chat/completions")
+        val requestBuilder = Request.Builder()
+            .url(endpoint)
             .addHeader("Authorization", "Bearer $apiKey")
             .addHeader("Content-Type", "application/json")
-            .addHeader("HTTP-Referer", "https://github.com/bertiger-cell/android-agents-app")
-            .addHeader("X-Title", "Android Agents App")
+
+        for ((key, value) in extraHeaders) {
+            requestBuilder.addHeader(key, value)
+        }
+
+        val request = requestBuilder
             .post(body)
             .build()
 
@@ -86,12 +113,12 @@ class AIProviderService {
         val responseBody = response.body?.string() ?: throw Exception("Empty response")
 
         if (!response.isSuccessful) {
-            throw Exception("OpenRouter error: $responseBody")
+            throw Exception("$providerName error: $responseBody")
         }
 
-        val openRouterResponse = gson.fromJson(responseBody, OpenAIResponse::class.java)
-        val output = openRouterResponse.choices?.firstOrNull()?.message?.content ?: ""
-        val tokens = openRouterResponse.usage?.total_tokens ?: 0
+        val openAiResponse = gson.fromJson(responseBody, OpenAIResponse::class.java)
+        val output = openAiResponse.choices?.firstOrNull()?.message?.content ?: ""
+        val tokens = openAiResponse.usage?.total_tokens ?: 0
 
         return Pair(output, tokens)
     }
@@ -136,44 +163,5 @@ class AIProviderService {
         val output = ollamaResponse.message?.content ?: ""
 
         return Pair(output, 0)
-    }
-
-    private fun callZen(
-        apiKey: String,
-        model: String,
-        messages: List<ApiMessage>,
-        maxTokens: Int,
-        temperature: Float
-    ): Pair<String, Int> {
-        val requestBody = mapOf(
-            "model" to model,
-            "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
-            "max_tokens" to maxTokens,
-            "temperature" to temperature
-        )
-
-        val json = gson.toJson(requestBody)
-        val mediaType = "application/json".toMediaType()
-        val body = json.toRequestBody(mediaType)
-
-        val request = Request.Builder()
-            .url("https://opencode.ai/zen/v1/chat/completions")
-            .addHeader("Authorization", "Bearer $apiKey")
-            .addHeader("Content-Type", "application/json")
-            .post(body)
-            .build()
-
-        val response = client.newCall(request).execute()
-        val responseBody = response.body?.string() ?: throw Exception("Empty response")
-
-        if (!response.isSuccessful) {
-            throw Exception("OpenCode Zen error: $responseBody")
-        }
-
-        val zenResponse = gson.fromJson(responseBody, OpenAIResponse::class.java)
-        val output = zenResponse.choices?.firstOrNull()?.message?.content ?: ""
-        val tokens = zenResponse.usage?.total_tokens ?: 0
-
-        return Pair(output, tokens)
     }
 }
