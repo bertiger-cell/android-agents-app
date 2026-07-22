@@ -4,6 +4,7 @@ import com.agents.app.ai.AIProviderService
 import com.agents.app.db.AgentDatabase
 import com.agents.app.models.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 
 class AgentRepository(private val database: AgentDatabase) {
     private val agentDao = database.agentDao()
@@ -40,6 +41,9 @@ class AgentRepository(private val database: AgentDatabase) {
         apiKey: String,
         baseUrl: String
     ): AgentResult {
+        // Get conversation history
+        val history = messageDao.getMessagesByAgent(agent.id).first()
+
         // Save user message
         addMessage(
             Message(
@@ -49,9 +53,12 @@ class AgentRepository(private val database: AgentDatabase) {
             )
         )
 
-        // Get conversation history
+        // Build messages with history
         val messages = mutableListOf<ApiMessage>()
         messages.add(ApiMessage(role = "system", content = agent.systemPrompt))
+        messages.addAll(
+            history.map { ApiMessage(role = it.role.name.lowercase(), content = it.content) }
+        )
         messages.add(ApiMessage(role = "user", content = userMessage))
 
         // Call AI Provider
