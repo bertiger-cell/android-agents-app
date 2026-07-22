@@ -2,108 +2,85 @@
 
 ## Zweck (v1)
 
-Eine Android-App, die eine Chat-Nachricht an einen von drei Cloud-Providern
-(OpenAI, Anthropic, Ollama) schickt und die Antwort anzeigt.
+Android-App zur Verwaltung von KI-Agenten (DB-gestützt) mit Chat über
+drei Provider-Optionen: OpenRouter, OpenCode Zen, Ollama (lokal oder
+cloud).
 
-**Das ist der gesamte Umfang von v1.** Kein Tool-Calling, keine Multi-Agenten-
-Orchestrierung, kein RAG, keine On-Device-Inferenz. Diese Dinge kommen erst,
-wenn v1 stabil läuft und getestet ist – siehe "Non-Goals" unten.
+## Tatsächliches Pattern
 
-## Tech-Stack
+Der bestehende Code nutzt einen zentralen Service statt einem Interface
+pro Provider – das ist bewusst so beibehalten, kein Interface-Rewrite:
 
-- **Sprache/UI:** Kotlin, Jetpack Compose
-- **Async:** Kotlin Coroutines + Flow
-- **Netzwerk:** Retrofit + OkHttp (oder Ktor Client – EINE Entscheidung treffen,
-  nicht beides parallel einbauen)
-- **API-Key-Speicherung:** Jetpack DataStore (verschlüsselt), niemals im Code
-  oder in Shared Preferences im Klartext
-- **DI:** Hilt (falls das Projekt wächst) – für v1 reicht auch manuelles
-  Constructor-Injection, keine Pflicht
+- `AIProviderService` (in `ai/`) – eine Klasse mit `sendMessage()`, die
+  über `when(provider)` auf die passende private Methode verzweigt:
+  `callOpenRouter()`, `callOllama()`, `callZen()`.
+- `AIProvider` – Enum mit den Werten `OPENROUTER`, `OLLAMA`, `ZEN`
+  (`ZEN` = OpenCode Zen).
 
-## Package-Struktur
+Das ist ein einfaches, valides Strategy-Pattern für drei Provider.
 
+## Provider-Details
+
+### OpenRouter
+- Endpoint: `https://openrouter.ai/api/v1/chat/completions`
+- Auth: `Authorization: Bearer <apiKey>`
+- Response-Format: OpenAI-kompatibel (`OpenAIResponse`)
+
+### OpenCode Zen
+- Endpoint: `https://opencode.ai/zen/v1/chat/completions`
+- Auth: `Authorization: Bearer <apiKey>`
+- Response-Format: OpenAI-kompatibel (`OpenAIResponse`) – identisch zu
+  OpenRouter (siehe "Bekannte offene Punkte")
+
+### Ollama – lokal UND cloud
+- Endpoint (beide Modi): `$baseUrl/api/chat`
+- **Lokal:** `baseUrl` zeigt auf `http://localhost:11434` oder eine
+  LAN-IP, kein API-Key nötig.
+- **Cloud:** `baseUrl` = `https://ollama.com`, benötigt zusätzlich
+  `Authorization: Bearer <apiKey>` – **dieser Header fehlt aktuell im
+  Code** (siehe "Bekannte offene Punkte", Punkt 3).
+- Response-Format: aktuell `OllamaResponse` mit Feld `response` – das
+  passt zum `/api/generate`-Endpoint. `/api/chat` liefert normalerweise
+  ein verschachteltes `message: {role, content}`-Objekt (siehe Punkt 2).
+
+## Package-Struktur (Ist-Zustand)
 ```
-app/src/main/java/.../
-├── data/
-│   ├── provider/
-│   │   ├── AiProvider.kt          // Interface (siehe unten)
-│   │   ├── OpenAiProvider.kt
-│   │   ├── AnthropicProvider.kt
-│   │   └── OllamaProvider.kt
-│   ├── network/
-│   │   └── <Retrofit-Interfaces, DTOs pro Provider>
-│   └── repository/
-│       └── ChatRepository.kt       // wählt Provider, delegiert
-├── domain/
-│   └── model/
-│       ├── ChatMessage.kt
-│       ├── ChatRequest.kt
-│       └── ChatResponse.kt
+com.agents.app/
+├── ai/
+│   └── AIProviderService.kt
+├── automation/
+├── db/
+│   └── AgentDatabase.kt (+ DAOs)
+├── models/
+│   └── Agent, Message, ApiMessage, AgentResult, OpenAIResponse, OllamaResponse, ...
 ├── ui/
-│   ├── chat/
-│   │   ├── ChatScreen.kt
-│   │   └── ChatViewModel.kt
-│   └── settings/
-│       ├── SettingsScreen.kt        // Provider wählen, API-Key eingeben
-│       └── SettingsViewModel.kt
-└── di/                              // falls Hilt genutzt wird
+├── AgentRepository.kt
+├── AgentsApplication.kt
+└── MainActivity.kt
 ```
 
-## Provider-Abstraktion (Kernstück)
+## Bekannte offene Punkte
 
-Jeder Provider implementiert dasselbe Interface. Die UI/ViewModel-Schicht kennt
-nie OpenAI/Anthropic/Ollama-spezifische Details – nur das Interface.
+1. **Conversation History wird nicht mitgeschickt.**
+   `AgentRepository.chat()` baut nur `system` + neue `user`-Message,
+   ruft `getMessagesByAgent()` nie ab. Kein Chat-Gedächtnis innerhalb
+   einer Session.
+2. **Ollama-Response-Parsing vermutlich falsches Feld.** `response`
+   statt `message.content` für den `/api/chat`-Endpoint – noch nicht
+   anhand der `OllamaResponse`-Datenklasse verifiziert.
+3. **Ollama-Cloud-Auth fehlt.** Kein Authorization-Header in
+   `callOllama()`, wenn `baseUrl` auf `https://ollama.com` zeigt. Ohne
+   diesen Header funktioniert der Cloud-Modus nicht.
+4. **Code-Duplikation** zwischen `callOpenRouter()` und `callZen()` –
+   beide OpenAI-kompatibel, könnten eine gemeinsame private Methode mit
+   Endpoint als Parameter nutzen.
 
-```kotlin
-interface AiProvider {
-    val id: ProviderType
-    suspend fun sendMessage(
-        messages: List<ChatMessage>,
-        apiKey: String
-    ): Result<ChatResponse>
-}
-
-enum class ProviderType { OPENROUTER, Opencode zen, OLLAMA }
-```
-
-- `Result<ChatResponse>` statt Exceptions durchreichen – Fehler (falscher Key,
-  Rate Limit, kein Netz, Ollama nicht erreichbar) werden im Repository/
-  ViewModel behandelt, nie in der UI-Schicht direkt gefangen.
-- Jeder Provider ist verantwortlich für sein eigenes Request/Response-Mapping
-  auf die gemeinsamen `domain`-Modelle. Provider-spezifische DTOs bleiben in
-  `data/network`, nie in `domain`.
-
-## Datenfluss
-
-```
-ChatScreen → ChatViewModel → ChatRepository → AiProvider (gewählte Implementierung)
-                                                    ↓
-                                              Retrofit/Ktor Call
-                                                    ↓
-                                            Result<ChatResponse>
-                                                    ↑
-ChatScreen ← ChatViewModel ← ChatRepository ←──────┘
-```
-
-## Fehlerbehandlung – Grundsatz
-
-- Netzwerkfehler, HTTP-Fehler, leere/kaputte Antworten → eigene Sealed-Class
-  `ChatError` (z.B. `NetworkError`, `AuthError`, `ProviderUnavailable`,
-  `UnknownError`), nie rohe Exceptions bis in die UI durchreichen.
-- Ollama-Sonderfall: kein API-Key nötig, aber Erreichbarkeit (lokales Netz/
-  IP) muss geprüft und dem Nutzer klar kommuniziert werden, wenn der Host
-  nicht erreichbar ist.
-
-## Non-Goals für v1 (bewusst NICHT bauen, bis v1 steht)
-
+## Non-Goals für v1
 - Tool-Calling / Function-Calling
-- Mehrere Agenten gleichzeitig / Orchestrierung
+- Mehrere Agenten gleichzeitig im Gespräch / Orchestrierung
 - On-Device-Inferenz (das macht bereits AI Workbench / Private Agent)
-- RAG oder Konversationshistorie über die aktuelle Session hinaus
-- Streaming-Antworten (kann später nachgerüstet werden, v1 = einfacher
-  Request/Response-Zyklus)
+- RAG
+- Streaming-Antworten
 
-## Versionierung dieses Dokuments
-
-Wird dieses Dokument geändert (z.B. Provider-Interface erweitert), muss die
-Änderung hier zuerst passieren – dann erst der Code. Nicht umgekehrt.
+## Versionierung
+Diese Datei wird zuerst geändert, dann der Code – nicht umgekehrt.
