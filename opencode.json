@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "ARCHITECTURE.md",
+    "RULES.md"
+  ],
+  "permission": {
+    "edit": "allow",
+    "bash": {
+      "git *": "allow",
+      "./gradlew *": "allow",
+      "rm *": "ask",
+      "*": "ask"
+    },
+    "webfetch": "ask"
+  },
+  "autoupdate": true
+}
