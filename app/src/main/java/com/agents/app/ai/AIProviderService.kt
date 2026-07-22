@@ -33,7 +33,7 @@ class AIProviderService {
         try {
             val response = when (provider) {
                 AIProvider.OPENROUTER -> callOpenRouter(apiKey, model, messages, maxTokens, temperature)
-                AIProvider.OLLAMA -> callOllama(baseUrl, model, messages, temperature)
+                AIProvider.OLLAMA -> callOllama(apiKey, baseUrl, model, messages, temperature)
                 AIProvider.ZEN -> callZen(apiKey, model, messages, maxTokens, temperature)
             }
 
@@ -97,6 +97,7 @@ class AIProviderService {
     }
 
     private fun callOllama(
+        apiKey: String,
         baseUrl: String,
         model: String,
         messages: List<ApiMessage>,
@@ -112,9 +113,15 @@ class AIProviderService {
         val mediaType = "application/json".toMediaType()
         val body = json.toRequestBody(mediaType)
 
-        val request = Request.Builder()
+        val requestBuilder = Request.Builder()
             .url("$baseUrl/api/chat")
             .addHeader("Content-Type", "application/json")
+
+        if (apiKey.isNotBlank()) {
+            requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+        }
+
+        val request = requestBuilder
             .post(body)
             .build()
 
