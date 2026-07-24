@@ -33,6 +33,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 },
                 onCreateAgent = {
                     navController.navigate("create")
+                },
+                onSettings = {
+                    navController.navigate("settings")
                 }
             )
         }
@@ -65,9 +68,6 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                     onNavigateBack = {
                         viewModel.selectAgent(null)
                         navController.popBackStack()
-                    },
-                    onSettings = {
-                        navController.navigate("settings")
                     }
                 )
             }

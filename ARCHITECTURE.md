@@ -101,7 +101,7 @@ Diese Datei wird zuerst geändert, dann der Code – nicht umgekehrt.
 - Jetpack DataStore (Preferences) als Speicher, EIN Key pro Provider:
   - `openrouter_api_key`
   - `opencode_zen_api_key`
-  - `ollama_base_url` (Default: `http://127.0.0.1:11434`)
+  - `ollama_base_url` (Default: `http://10.0.2.2:11434`)
   - `ollama_api_key` (optional, nur für Ollama-Cloud-Modus)
 - Neue Klasse `ProviderCredentialsRepository` (in `data/`), kapselt
   DataStore-Zugriff, stellt `Flow<ProviderCredentials>` bereit sowie

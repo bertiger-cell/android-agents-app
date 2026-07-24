@@ -14,7 +14,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 data class ProviderCredentials(
     val openRouterKey: String = "",
     val zenKey: String = "",
-    val ollamaBaseUrl: String = "http://127.0.0.1:11434",
+    val ollamaBaseUrl: String = "http://10.0.2.2:11434",
     val ollamaApiKey: String = ""
 )
 
@@ -31,7 +31,7 @@ class ProviderCredentialsRepository(private val context: Context) {
         ProviderCredentials(
             openRouterKey = prefs[Keys.OPENROUTER_API_KEY] ?: "",
             zenKey = prefs[Keys.ZEN_API_KEY] ?: "",
-            ollamaBaseUrl = prefs[Keys.OLLAMA_BASE_URL] ?: "http://127.0.0.1:11434",
+            ollamaBaseUrl = prefs[Keys.OLLAMA_BASE_URL] ?: "http://10.0.2.2:11434",
             ollamaApiKey = prefs[Keys.OLLAMA_API_KEY] ?: ""
         )
     }
