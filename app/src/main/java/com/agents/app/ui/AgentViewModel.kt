@@ -8,12 +8,14 @@ import com.agents.app.AgentsApplication
 import com.agents.app.data.ProviderCredentials
 import com.agents.app.data.ProviderCredentialsRepository
 import com.agents.app.models.*
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AgentRepository
     private val credentialsRepository = ProviderCredentialsRepository(application)
+    private var messagesJob: Job? = null
 
     private val _agents = MutableStateFlow<List<Agent>>(emptyList())
     val agents: StateFlow<List<Agent>> = _agents.asStateFlow()
@@ -52,9 +54,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectAgent(agent: Agent?) {
+        messagesJob?.cancel()
         _selectedAgent.value = agent
         if (agent != null) {
-            viewModelScope.launch {
+            messagesJob = viewModelScope.launch {
                 repository.getMessagesByAgent(agent.id).collect { messages ->
                     _messages.value = messages
                 }
