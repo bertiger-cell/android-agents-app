@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsScreen(
     credentials: ProviderCredentials,
+    ollamaModels: List<String>,
     onUpdateOpenRouterKey: (String) -> Unit,
     onUpdateZenKey: (String) -> Unit,
     onUpdateOllamaBaseUrl: (String) -> Unit,
@@ -41,6 +42,8 @@ fun SettingsScreen(
     var ollamaApiKey by remember { mutableStateOf(credentials.ollamaApiKey) }
     var ollamaTestMessage by remember { mutableStateOf<String?>(null) }
     var ollamaTestInProgress by remember { mutableStateOf(false) }
+    var ollamaWarmupMessage by remember { mutableStateOf<String?>(null) }
+    var ollamaWarmupInProgress by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -127,12 +130,12 @@ fun SettingsScreen(
                         ollamaTestInProgress = true
                         ollamaTestMessage = null
                         coroutineScope.launch {
-                            val result = runCatching {
+                            val result = try {
                                 providerService.testOllamaConnection(
                                     baseUrl = ollamaBaseUrl,
                                     apiKey = ollamaApiKey
                                 )
-                            }.getOrElse { throwable ->
+                            } catch (throwable: Exception) {
                                 OllamaConnectionResult(
                                     success = false,
                                     message = throwable.message ?: "Unbekannter Fehler"
@@ -160,6 +163,53 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            OutlinedButton(
+                    onClick = {
+                        ollamaWarmupInProgress = true
+                        ollamaWarmupMessage = null
+                        coroutineScope.launch {
+                            val uniqueModels = ollamaModels.filter { it.isNotBlank() }.distinct()
+                            val results = uniqueModels.map { model ->
+                                try {
+                                    providerService.warmUpOllama(
+                                        baseUrl = ollamaBaseUrl,
+                                        apiKey = ollamaApiKey,
+                                        model = model
+                                    )
+                                } catch (throwable: Exception) {
+                                    OllamaConnectionResult(
+                                        success = false,
+                                        message = "${model}: ${throwable.message ?: "Unbekannter Fehler"}"
+                                    )
+                                }
+                            }
+                            ollamaWarmupInProgress = false
+                            ollamaWarmupMessage = if (results.isEmpty()) {
+                                "No Ollama models configured yet."
+                        } else {
+                            results.joinToString("\n") { result ->
+                                result.message
+                            }
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !ollamaWarmupInProgress && ollamaModels.any { it.isNotBlank() }
+            ) {
+                Text(
+                    if (ollamaWarmupInProgress) {
+                        "Warming up..."
+                    } else {
+                        "Warm up Ollama models (${ollamaModels.count { it.isNotBlank() }})"
+                    }
+                )
+            }
+            if (ollamaWarmupMessage != null) {
+                Text(
+                    text = ollamaWarmupMessage.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
             Divider()
 
             Button(

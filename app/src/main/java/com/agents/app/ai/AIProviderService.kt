@@ -26,7 +26,8 @@ class AIProviderService {
         model: String,
         messages: List<ApiMessage>,
         maxTokens: Int = 4096,
-        temperature: Float = 0.7f
+        temperature: Float = 0.7f,
+        keepAlive: String = "30m"
     ): AgentResult = withContext(Dispatchers.IO) {
         val startTime = System.currentTimeMillis()
 
@@ -45,7 +46,7 @@ class AIProviderService {
                         "X-Title" to "Android Agents App"
                     )
                 )
-                AIProvider.OLLAMA -> callOllama(apiKey, baseUrl, model, messages, temperature)
+                AIProvider.OLLAMA -> callOllama(apiKey, baseUrl, model, messages, temperature, keepAlive)
                 AIProvider.ZEN -> callOpenAiCompatible(
                     endpoint = "https://opencode.ai/zen/v1/chat/completions",
                     apiKey = apiKey,
@@ -123,6 +124,62 @@ class AIProviderService {
         }
     }
 
+    suspend fun warmUpOllama(
+        baseUrl: String,
+        apiKey: String,
+        model: String,
+        keepAlive: String = "30m"
+    ): OllamaConnectionResult = withContext(Dispatchers.IO) {
+        if (model.isBlank()) {
+            return@withContext OllamaConnectionResult(
+                success = false,
+                message = "Model name is empty."
+            )
+        }
+
+        val requestUrl = buildOllamaUrl(baseUrl, "/api/generate")
+
+        try {
+            val requestBody = mapOf(
+                "model" to model,
+                "keep_alive" to keepAlive,
+                "stream" to false
+            )
+
+            val json = gson.toJson(requestBody)
+            val mediaType = "application/json".toMediaType()
+            val body = json.toRequestBody(mediaType)
+
+            val requestBuilder = Request.Builder()
+                .url(requestUrl)
+                .addHeader("Content-Type", "application/json")
+
+            if (apiKey.isNotBlank()) {
+                requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+            }
+
+            val response = client.newCall(requestBuilder.post(body).build()).execute()
+            val responseBody = response.body?.string().orEmpty()
+
+            if (!response.isSuccessful) {
+                return@withContext OllamaConnectionResult(
+                    success = false,
+                    message = "Warmup failed for $model (${response.code}) at $requestUrl: ${responseBody.take(500)}"
+                )
+            }
+
+            return@withContext OllamaConnectionResult(
+                success = true,
+                message = "Warmup started for $model."
+            )
+        } catch (e: Exception) {
+            return@withContext OllamaConnectionResult(
+                success = false,
+                message = "Warmup failed for $model at $requestUrl: ${e.message ?: "Unknown error"}"
+            )
+        }
+    }
+
     private fun callOpenAiCompatible(
         endpoint: String,
         apiKey: String,
@@ -176,7 +233,8 @@ class AIProviderService {
         baseUrl: String,
         model: String,
         messages: List<ApiMessage>,
-        temperature: Float
+        temperature: Float,
+        keepAlive: String
     ): Pair<String, Int> {
         val requestUrl = buildOllamaUrl(baseUrl, "/api/chat")
         try {
@@ -184,7 +242,8 @@ class AIProviderService {
                 "model" to model,
                 "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
                 "options" to mapOf("temperature" to temperature),
-                "stream" to false
+                "stream" to false,
+                "keep_alive" to keepAlive
             )
 
             val json = gson.toJson(requestBody)

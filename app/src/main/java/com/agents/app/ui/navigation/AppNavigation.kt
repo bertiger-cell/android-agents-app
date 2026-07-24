@@ -6,7 +6,6 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.agents.app.models.AIProvider
-import com.agents.app.models.Agent
 import com.agents.app.ui.AgentViewModel
 import com.agents.app.ui.screens.*
 
@@ -18,6 +17,15 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val credentials by viewModel.credentials.collectAsState()
+    val ollamaModels = remember(agents) {
+        agents
+            .asSequence()
+            .filter { it.provider == AIProvider.OLLAMA }
+            .map { it.model }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .toList()
+    }
 
     NavHost(navController = navController, startDestination = "agents") {
         // Agent List Screen
@@ -77,6 +85,7 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
         composable("settings") {
             SettingsScreen(
                 credentials = credentials,
+                ollamaModels = ollamaModels,
                 onUpdateOpenRouterKey = { viewModel.updateOpenRouterKey(it) },
                 onUpdateZenKey = { viewModel.updateZenKey(it) },
                 onUpdateOllamaBaseUrl = { viewModel.updateOllamaBaseUrl(it) },
