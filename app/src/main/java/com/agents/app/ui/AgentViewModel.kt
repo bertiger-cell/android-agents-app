@@ -5,12 +5,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agents.app.AgentRepository
 import com.agents.app.AgentsApplication
+import com.agents.app.data.ProviderCredentials
+import com.agents.app.data.ProviderCredentialsRepository
 import com.agents.app.models.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AgentRepository
+    private val credentialsRepository = ProviderCredentialsRepository(application)
 
     private val _agents = MutableStateFlow<List<Agent>>(emptyList())
     val agents: StateFlow<List<Agent>> = _agents.asStateFlow()
@@ -29,6 +32,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _ollamaUrl = MutableStateFlow("http://localhost:11434")
     val ollamaUrl: StateFlow<String> = _ollamaUrl.asStateFlow()
+
+    val credentials: StateFlow<ProviderCredentials> =
+        credentialsRepository.credentials.stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            ProviderCredentials()
+        )
 
     init {
         val app = application as AgentsApplication
@@ -92,11 +102,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             _isLoading.value = true
+            val creds = credentials.value
+            val (apiKey, baseUrl) = when (agent.provider) {
+                AIProvider.OPENROUTER -> creds.openRouterKey to ""
+                AIProvider.ZEN -> creds.zenKey to ""
+                AIProvider.OLLAMA -> creds.ollamaApiKey to creds.ollamaBaseUrl
+            }
             val result = repository.chat(
                 agent = agent,
                 userMessage = content,
-                apiKey = _apiKey.value,
-                baseUrl = _ollamaUrl.value
+                apiKey = apiKey,
+                baseUrl = baseUrl
             )
             _isLoading.value = false
         }
