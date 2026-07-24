@@ -183,7 +183,8 @@ class AIProviderService {
             val requestBody = mapOf(
                 "model" to model,
                 "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
-                "options" to mapOf("temperature" to temperature)
+                "options" to mapOf("temperature" to temperature),
+                "stream" to false
             )
 
             val json = gson.toJson(requestBody)
