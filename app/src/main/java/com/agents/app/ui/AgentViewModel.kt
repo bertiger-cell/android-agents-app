@@ -29,12 +29,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _apiKey = MutableStateFlow("")
-    val apiKey: StateFlow<String> = _apiKey.asStateFlow()
-
-    private val _ollamaUrl = MutableStateFlow("http://localhost:11434")
-    val ollamaUrl: StateFlow<String> = _ollamaUrl.asStateFlow()
-
     val credentials: StateFlow<ProviderCredentials> =
         credentialsRepository.credentials.stateIn(
             viewModelScope,
@@ -121,12 +115,20 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateApiKey(key: String) {
-        _apiKey.value = key
+    fun updateOpenRouterKey(key: String) {
+        viewModelScope.launch { credentialsRepository.updateOpenRouterKey(key) }
     }
 
-    fun updateOllamaUrl(url: String) {
-        _ollamaUrl.value = url
+    fun updateZenKey(key: String) {
+        viewModelScope.launch { credentialsRepository.updateZenKey(key) }
+    }
+
+    fun updateOllamaBaseUrl(url: String) {
+        viewModelScope.launch { credentialsRepository.updateOllamaBaseUrl(url) }
+    }
+
+    fun updateOllamaApiKey(key: String) {
+        viewModelScope.launch { credentialsRepository.updateOllamaApiKey(key) }
     }
 
     fun clearChat() {

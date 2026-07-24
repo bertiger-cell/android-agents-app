@@ -13,20 +13,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.agents.app.data.ProviderCredentials
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    apiKey: String,
-    ollamaUrl: String,
-    onUpdateApiKey: (String) -> Unit,
-    onUpdateOllamaUrl: (String) -> Unit,
+    credentials: ProviderCredentials,
+    onUpdateOpenRouterKey: (String) -> Unit,
+    onUpdateZenKey: (String) -> Unit,
+    onUpdateOllamaBaseUrl: (String) -> Unit,
+    onUpdateOllamaApiKey: (String) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var showApiKey by remember { mutableStateOf(false) }
-    var localApiKey by remember { mutableStateOf(apiKey) }
-    var localOllamaUrl by remember { mutableStateOf(ollamaUrl) }
+    var showOpenRouterKey by remember { mutableStateOf(false) }
+    var showZenKey by remember { mutableStateOf(false) }
+    var showOllamaKey by remember { mutableStateOf(false) }
+    var openRouterKey by remember { mutableStateOf(credentials.openRouterKey) }
+    var zenKey by remember { mutableStateOf(credentials.zenKey) }
+    var ollamaBaseUrl by remember { mutableStateOf(credentials.ollamaBaseUrl) }
+    var ollamaApiKey by remember { mutableStateOf(credentials.ollamaApiKey) }
 
     Scaffold(
         topBar = {
@@ -51,90 +57,71 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Text(
-                text = "AI Provider Settings",
-                style = MaterialTheme.typography.headlineSmall
-            )
-
+            Text("AI Provider Settings", style = MaterialTheme.typography.headlineSmall)
             Divider()
 
-            // API Key Section
-            Text(
-                text = "OpenAI / Anthropic API Key",
-                style = MaterialTheme.typography.titleMedium
-            )
+            Text("OpenRouter", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
-                value = localApiKey,
-                onValueChange = { localApiKey = it },
+                value = openRouterKey,
+                onValueChange = { openRouterKey = it },
                 label = { Text("API Key") },
                 modifier = Modifier.fillMaxWidth(),
-                visualTransformation = if (showApiKey) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
+                visualTransformation = if (showOpenRouterKey) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
-                    IconButton(onClick = { showApiKey = !showApiKey }) {
-                        Icon(
-                            if (showApiKey) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = if (showApiKey) "Hide" else "Show"
-                        )
+                    IconButton(onClick = { showOpenRouterKey = !showOpenRouterKey }) {
+                        Icon(if (showOpenRouterKey) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, contentDescription = null)
                     }
                 }
             )
-
             Divider()
 
-            // Ollama Section
-            Text(
-                text = "Ollama (Local LLM)",
-                style = MaterialTheme.typography.titleMedium
-            )
+            Text("OpenCode Zen", style = MaterialTheme.typography.titleMedium)
             OutlinedTextField(
-                value = localOllamaUrl,
-                onValueChange = { localOllamaUrl = it },
+                value = zenKey,
+                onValueChange = { zenKey = it },
+                label = { Text("API Key") },
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = if (showZenKey) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { showZenKey = !showZenKey }) {
+                        Icon(if (showZenKey) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, contentDescription = null)
+                    }
+                }
+            )
+            Divider()
+
+            Text("Ollama (Local & Cloud)", style = MaterialTheme.typography.titleMedium)
+            OutlinedTextField(
+                value = ollamaBaseUrl,
+                onValueChange = { ollamaBaseUrl = it },
                 label = { Text("Base URL") },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("http://localhost:11434") }
+                placeholder = { Text("http://127.0.0.1:11434") }
             )
-
+            OutlinedTextField(
+                value = ollamaApiKey,
+                onValueChange = { ollamaApiKey = it },
+                label = { Text("Cloud API Key (optional)") },
+                modifier = Modifier.fillMaxWidth(),
+                visualTransformation = if (showOllamaKey) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { showOllamaKey = !showOllamaKey }) {
+                        Icon(if (showOllamaKey) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, contentDescription = null)
+                    }
+                }
+            )
             Divider()
 
             Button(
                 onClick = {
-                    onUpdateApiKey(localApiKey)
-                    onUpdateOllamaUrl(localOllamaUrl)
+                    onUpdateOpenRouterKey(openRouterKey)
+                    onUpdateZenKey(zenKey)
+                    onUpdateOllamaBaseUrl(ollamaBaseUrl)
+                    onUpdateOllamaApiKey(ollamaApiKey)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Save Settings")
-            }
-
-            // Info Section
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Supported Providers",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "• OpenRouter: 200+ models (GPT-4o, Claude, Llama, etc.)",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "• Ollama: Any locally hosted model",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "• OpenCode Zen: Curated AI models (big-pickle free!)",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
             }
         }
     }

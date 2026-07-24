@@ -5,13 +5,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.agents.app.models.AIProvider
 import com.agents.app.models.AgentType
@@ -19,8 +15,6 @@ import com.agents.app.models.AgentType
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAgentScreen(
-    currentApiKey: String,
-    currentOllamaUrl: String,
     onNavigateBack: () -> Unit,
     onCreateAgent: (
         name: String,
@@ -30,9 +24,7 @@ fun CreateAgentScreen(
         systemPrompt: String,
         model: String,
         temperature: Float
-    ) -> Unit,
-    onUpdateApiKey: (String) -> Unit,
-    onUpdateOllamaUrl: (String) -> Unit
+    ) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
@@ -41,9 +33,6 @@ fun CreateAgentScreen(
     var temperature by remember { mutableStateOf(0.7f) }
     var selectedType by remember { mutableStateOf(AgentType.GENERAL) }
     var selectedProvider by remember { mutableStateOf(AIProvider.OPENROUTER) }
-    var apiKey by remember { mutableStateOf(currentApiKey) }
-    var ollamaUrl by remember { mutableStateOf(currentOllamaUrl) }
-    var showApiKey by remember { mutableStateOf(false) }
 
     val agentTypes = AgentType.entries
     val aiProviders = AIProvider.entries
@@ -156,40 +145,6 @@ fun CreateAgentScreen(
                 }
             }
 
-            // API Key (shown for OpenAI/Anthropic/Zen)
-            if (selectedProvider != AIProvider.OLLAMA) {
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
-                    label = { Text("API Key") },
-                    modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = if (showApiKey) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = { showApiKey = !showApiKey }) {
-                            Icon(
-                                if (showApiKey) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                contentDescription = if (showApiKey) "Hide" else "Show"
-                            )
-                        }
-                    }
-                )
-            }
-
-            // Ollama URL (shown for Ollama)
-            if (selectedProvider == AIProvider.OLLAMA) {
-                OutlinedTextField(
-                    value = ollamaUrl,
-                    onValueChange = { ollamaUrl = it },
-                    label = { Text("Ollama Base URL") },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("http://localhost:11434") }
-                )
-            }
-
             OutlinedTextField(
                 value = model,
                 onValueChange = { model = it },
@@ -220,8 +175,6 @@ fun CreateAgentScreen(
 
             Button(
                 onClick = {
-                    onUpdateApiKey(apiKey)
-                    onUpdateOllamaUrl(ollamaUrl)
                     onCreateAgent(
                         name,
                         description,

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import com.agents.app.models.AIProvider
 import com.agents.app.models.Agent
 import com.agents.app.ui.AgentViewModel
 import com.agents.app.ui.screens.*
@@ -16,8 +17,7 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val selectedAgent by viewModel.selectedAgent.collectAsState()
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val apiKey by viewModel.apiKey.collectAsState()
-    val ollamaUrl by viewModel.ollamaUrl.collectAsState()
+    val credentials by viewModel.credentials.collectAsState()
 
     NavHost(navController = navController, startDestination = "agents") {
         // Agent List Screen
@@ -40,22 +40,10 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
         // Create Agent Screen
         composable("create") {
             CreateAgentScreen(
-                currentApiKey = apiKey,
-                currentOllamaUrl = ollamaUrl,
                 onNavigateBack = { navController.popBackStack() },
                 onCreateAgent = { name, description, type, provider, systemPrompt, model, temperature ->
-                    viewModel.createAgent(
-                        name = name,
-                        description = description,
-                        type = type,
-                        provider = provider,
-                        systemPrompt = systemPrompt,
-                        model = model,
-                        temperature = temperature
-                    )
-                },
-                onUpdateApiKey = { viewModel.updateApiKey(it) },
-                onUpdateOllamaUrl = { viewModel.updateOllamaUrl(it) }
+                    viewModel.createAgent(name, description, type, provider, systemPrompt, model, temperature)
+                }
             )
         }
 
@@ -66,7 +54,11 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                     agent = agent,
                     messages = messages,
                     isLoading = isLoading,
-                    apiKeyAvailable = apiKey.isNotBlank(),
+                    apiKeyAvailable = when (agent.provider) {
+                        AIProvider.OPENROUTER -> credentials.openRouterKey.isNotBlank()
+                        AIProvider.ZEN -> credentials.zenKey.isNotBlank()
+                        AIProvider.OLLAMA -> credentials.ollamaBaseUrl.isNotBlank()
+                    },
                     onSendMessage = { message ->
                         viewModel.sendMessage(message)
                     },
@@ -84,10 +76,11 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
         // Settings Screen
         composable("settings") {
             SettingsScreen(
-                apiKey = apiKey,
-                ollamaUrl = ollamaUrl,
-                onUpdateApiKey = { viewModel.updateApiKey(it) },
-                onUpdateOllamaUrl = { viewModel.updateOllamaUrl(it) },
+                credentials = credentials,
+                onUpdateOpenRouterKey = { viewModel.updateOpenRouterKey(it) },
+                onUpdateZenKey = { viewModel.updateZenKey(it) },
+                onUpdateOllamaBaseUrl = { viewModel.updateOllamaBaseUrl(it) },
+                onUpdateOllamaApiKey = { viewModel.updateOllamaApiKey(it) },
                 onNavigateBack = { navController.popBackStack() }
             )
         }
