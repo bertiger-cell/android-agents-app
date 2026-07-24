@@ -59,7 +59,7 @@ fun ChatScreen(
                     color = MaterialTheme.colorScheme.errorContainer
                 ) {
                     Text(
-                        text = "No API key configured. Go to Settings to add your API key.",
+                        text = "No credentials configured. Open Settings to add provider credentials.",
                         modifier = Modifier.padding(12.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onErrorContainer

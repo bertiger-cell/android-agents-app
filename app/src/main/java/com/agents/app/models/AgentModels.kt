@@ -75,6 +75,12 @@ data class AgentResult(
     val executionTimeMs: Long = 0
 )
 
+data class OllamaConnectionResult(
+    val success: Boolean,
+    val message: String,
+    val version: String? = null
+)
+
 // API Request/Response Models
 data class ChatRequest(
     val model: String,
@@ -133,6 +139,10 @@ data class OllamaResponse(
     val model: String?,
     val message: OllamaMessage?,
     val done: Boolean?
+)
+
+data class OllamaVersionResponse(
+    val version: String?
 )
 
 data class OllamaMessage(

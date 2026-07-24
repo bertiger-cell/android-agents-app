@@ -13,7 +13,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.agents.app.ai.AIProviderService
 import com.agents.app.data.ProviderCredentials
+import com.agents.app.models.OllamaConnectionResult
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,6 +29,9 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val providerService = remember { AIProviderService() }
+    val coroutineScope = rememberCoroutineScope()
+
     var showOpenRouterKey by remember { mutableStateOf(false) }
     var showZenKey by remember { mutableStateOf(false) }
     var showOllamaKey by remember { mutableStateOf(false) }
@@ -33,6 +39,8 @@ fun SettingsScreen(
     var zenKey by remember { mutableStateOf(credentials.zenKey) }
     var ollamaBaseUrl by remember { mutableStateOf(credentials.ollamaBaseUrl) }
     var ollamaApiKey by remember { mutableStateOf(credentials.ollamaApiKey) }
+    var ollamaTestMessage by remember { mutableStateOf<String?>(null) }
+    var ollamaTestInProgress by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -96,7 +104,7 @@ fun SettingsScreen(
                 onValueChange = { ollamaBaseUrl = it },
                 label = { Text("Base URL") },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("http://127.0.0.1:11434") }
+                placeholder = { Text("http://10.0.2.2:11434") }
             )
             OutlinedTextField(
                 value = ollamaApiKey,
@@ -109,6 +117,48 @@ fun SettingsScreen(
                         Icon(if (showOllamaKey) Icons.Filled.Visibility else Icons.Filled.VisibilityOff, contentDescription = null)
                     }
                 }
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        ollamaTestInProgress = true
+                        ollamaTestMessage = null
+                        coroutineScope.launch {
+                            val result = runCatching {
+                                providerService.testOllamaConnection(
+                                    baseUrl = ollamaBaseUrl,
+                                    apiKey = ollamaApiKey
+                                )
+                            }.getOrElse { throwable ->
+                                OllamaConnectionResult(
+                                    success = false,
+                                    message = throwable.message ?: "Unbekannter Fehler"
+                                )
+                            }
+                            ollamaTestInProgress = false
+                            ollamaTestMessage = result.message
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = !ollamaTestInProgress
+                ) {
+                    Text(if (ollamaTestInProgress) "Test..." else "Test Connection")
+                }
+                if (ollamaTestMessage != null) {
+                    Text(
+                        text = ollamaTestMessage.orEmpty(),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+            Text(
+                text = "Termux: Auf einem echten Geraet die LAN-IP des Termux-Hosts eintragen. Im Emulator funktioniert oft 10.0.2.2. 127.0.0.1 reicht nur, wenn App und Ollama wirklich im selben Netzbereich laufen.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Divider()
 

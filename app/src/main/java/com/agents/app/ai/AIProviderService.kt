@@ -75,6 +75,54 @@ class AIProviderService {
         }
     }
 
+    suspend fun testOllamaConnection(
+        baseUrl: String,
+        apiKey: String
+    ): OllamaConnectionResult = withContext(Dispatchers.IO) {
+        val requestUrl = buildOllamaUrl(baseUrl, "/api/version")
+        try {
+            val requestBuilder = Request.Builder()
+                .url(requestUrl)
+                .get()
+                .addHeader("Content-Type", "application/json")
+
+            if (apiKey.isNotBlank()) {
+                requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+            }
+
+            val response = client.newCall(requestBuilder.build()).execute()
+            val responseBody = response.body?.string().orEmpty()
+
+            if (!response.isSuccessful) {
+                return@withContext OllamaConnectionResult(
+                    success = false,
+                    message = "Ollama nicht erreichbar (${response.code}) bei $requestUrl: ${responseBody.take(500)}",
+                    version = null
+                )
+            }
+
+            val version = runCatching {
+                gson.fromJson(responseBody, OllamaVersionResponse::class.java).version
+            }.getOrNull()
+
+            return@withContext OllamaConnectionResult(
+                success = true,
+                message = if (version.isNullOrBlank()) {
+                    "Ollama ist erreichbar."
+                } else {
+                    "Ollama ist erreichbar. Version: $version"
+                },
+                version = version
+            )
+        } catch (e: Exception) {
+            return@withContext OllamaConnectionResult(
+                success = false,
+                message = "Ollama-Verbindung fehlgeschlagen bei $requestUrl: ${e.message ?: "Unbekannter Fehler"}",
+                version = null
+            )
+        }
+    }
+
     private fun callOpenAiCompatible(
         endpoint: String,
         apiKey: String,
@@ -130,38 +178,62 @@ class AIProviderService {
         messages: List<ApiMessage>,
         temperature: Float
     ): Pair<String, Int> {
-        val requestBody = mapOf(
-            "model" to model,
-            "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
-            "options" to mapOf("temperature" to temperature)
-        )
+        val requestUrl = buildOllamaUrl(baseUrl, "/api/chat")
+        try {
+            val requestBody = mapOf(
+                "model" to model,
+                "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
+                "options" to mapOf("temperature" to temperature)
+            )
 
-        val json = gson.toJson(requestBody)
-        val mediaType = "application/json".toMediaType()
-        val body = json.toRequestBody(mediaType)
+            val json = gson.toJson(requestBody)
+            val mediaType = "application/json".toMediaType()
+            val body = json.toRequestBody(mediaType)
 
-        val requestBuilder = Request.Builder()
-            .url("$baseUrl/api/chat")
-            .addHeader("Content-Type", "application/json")
+            val requestBuilder = Request.Builder()
+                .url(requestUrl)
+                .addHeader("Content-Type", "application/json")
 
-        if (apiKey.isNotBlank()) {
-            requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+            if (apiKey.isNotBlank()) {
+                requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+            }
+
+            val request = requestBuilder
+                .post(body)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: throw Exception("Empty response")
+
+            if (!response.isSuccessful) {
+                throw Exception("Ollama API error (${response.code}) bei $requestUrl: ${responseBody.take(500)}")
+            }
+
+            val ollamaResponse = gson.fromJson(responseBody, OllamaResponse::class.java)
+            val output = ollamaResponse.message?.content ?: ""
+
+            if (output.isBlank()) {
+                throw Exception("Ollama lieferte keine Antwort bei $requestUrl")
+            }
+
+            return Pair(output, 0)
+        } catch (e: Exception) {
+            throw Exception("Ollama-Aufruf fehlgeschlagen bei $requestUrl: ${e.message ?: "Unbekannter Fehler"}")
+        }
+    }
+
+    private fun buildOllamaUrl(baseUrl: String, path: String): String {
+        val normalizedBaseUrl = baseUrl.trim().trimEnd('/').removeSuffix("/api")
+        if (normalizedBaseUrl.isBlank()) {
+            throw IllegalArgumentException("Ollama base URL is empty")
         }
 
-        val request = requestBuilder
-            .post(body)
-            .build()
-
-        val response = client.newCall(request).execute()
-        val responseBody = response.body?.string() ?: throw Exception("Empty response")
-
-        if (!response.isSuccessful) {
-            throw Exception("Ollama API error: $responseBody")
+        val safeBaseUrl = if (normalizedBaseUrl.startsWith("http://") || normalizedBaseUrl.startsWith("https://")) {
+            normalizedBaseUrl
+        } else {
+            "http://$normalizedBaseUrl"
         }
 
-        val ollamaResponse = gson.fromJson(responseBody, OllamaResponse::class.java)
-        val output = ollamaResponse.message?.content ?: ""
-
-        return Pair(output, 0)
+        return "$safeBaseUrl$path"
     }
 }
