@@ -2,7 +2,7 @@
 
 ## Projekt
 Android-App (Kotlin/Jetpack Compose), Multi-Provider AI-Agent
-(OpenAI, Anthropic, Ollama). Aktuell v1: einfacher Chat, ein Provider
+(OpenRouter, OpenCode Zen, Ollama). Aktuell v1: einfacher Chat, ein Provider
 gleichzeitig auswählbar.
 
 Volle Architektur: siehe `ARCHITECTURE.md`.
