@@ -125,6 +125,35 @@ class AIProviderService {
         }
     }
 
+    suspend fun fetchOllamaModels(
+        baseUrl: String,
+        apiKey: String
+    ): List<OllamaModel> = withContext(Dispatchers.IO) {
+        val requestUrl = buildOllamaUrl(baseUrl, "/api/tags")
+        try {
+            val requestBuilder = Request.Builder()
+                .url(requestUrl)
+                .get()
+                .addHeader("Content-Type", "application/json")
+
+            if (apiKey.isNotBlank()) {
+                requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+            }
+
+            val response = client.newCall(requestBuilder.build()).execute()
+            val responseBody = response.body?.string().orEmpty()
+
+            if (!response.isSuccessful) {
+                return@withContext emptyList()
+            }
+
+            val tagsResponse = gson.fromJson(responseBody, OllamaTagsResponse::class.java)
+            return@withContext tagsResponse.models ?: emptyList()
+        } catch (e: Exception) {
+            return@withContext emptyList()
+        }
+    }
+
     suspend fun warmUpOllama(
         baseUrl: String,
         apiKey: String,
@@ -138,12 +167,14 @@ class AIProviderService {
             )
         }
 
-        val requestUrl = buildOllamaUrl(baseUrl, "/api/generate")
+        val requestUrl = buildOllamaUrl(baseUrl, "/api/chat")
 
         try {
             val requestBody = mapOf(
                 "model" to model,
-                "prompt" to "",
+                "messages" to listOf(
+                    mapOf("role" to "user", "content" to "ping")
+                ),
                 "keep_alive" to keepAlive,
                 "stream" to false
             )

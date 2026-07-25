@@ -145,6 +145,24 @@ data class OllamaVersionResponse(
     val version: String?
 )
 
+data class OllamaTagsResponse(
+    val models: List<OllamaModel>?
+)
+
+data class OllamaModel(
+    val name: String?,
+    val model: String?,
+    val size: Long?,
+    val details: OllamaModelDetails?
+)
+
+data class OllamaModelDetails(
+    val parameter_size: String?,
+    val quantization_level: String?,
+    val family: String?,
+    val context_length: Int?
+)
+
 data class OllamaMessage(
     val role: String?,
     val content: String?

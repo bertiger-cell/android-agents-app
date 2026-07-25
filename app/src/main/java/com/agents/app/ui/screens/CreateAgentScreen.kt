@@ -11,10 +11,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agents.app.models.AIProvider
 import com.agents.app.models.AgentType
+import com.agents.app.models.OllamaModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAgentScreen(
+    availableOllamaModels: List<OllamaModel> = emptyList(),
+    onFetchOllamaModels: (String, String) -> Unit = { _, _ -> },
+    ollamaBaseUrl: String = "",
+    ollamaApiKey: String = "",
     onNavigateBack: () -> Unit,
     onCreateAgent: (
         name: String,
@@ -136,7 +141,7 @@ fun CreateAgentScreen(
                                 // Set default model based on provider
                                 model = when (provider) {
                                     AIProvider.OPENROUTER -> "openai/gpt-4o"
-                                    AIProvider.OLLAMA -> "llama2"
+                                    AIProvider.OLLAMA -> availableOllamaModels.firstOrNull()?.name ?: ""
                                     AIProvider.ZEN -> "big-pickle"
                                 }
                             }
@@ -145,12 +150,70 @@ fun CreateAgentScreen(
                 }
             }
 
-            OutlinedTextField(
-                value = model,
-                onValueChange = { model = it },
-                label = { Text("Model") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            if (selectedProvider == AIProvider.OLLAMA) {
+                // Trigger model fetch when switching to Ollama
+                LaunchedEffect(selectedProvider) {
+                    if (ollamaBaseUrl.isNotBlank()) {
+                        onFetchOllamaModels(ollamaBaseUrl, ollamaApiKey)
+                    }
+                }
+
+                var modelExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = modelExpanded,
+                    onExpandedChange = { modelExpanded = !modelExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = model,
+                        onValueChange = { model = it },
+                        label = { Text("Model") },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) },
+                        placeholder = { Text("Select or type model name") }
+                    )
+                    if (availableOllamaModels.isNotEmpty()) {
+                        ExposedDropdownMenu(
+                            expanded = modelExpanded,
+                            onDismissRequest = { modelExpanded = false }
+                        ) {
+                            availableOllamaModels.forEach { ollamaModel ->
+                                val displayName = ollamaModel.name ?: ollamaModel.model ?: ""
+                                val detail = listOfNotNull(
+                                    ollamaModel.details?.parameter_size,
+                                    ollamaModel.details?.quantization_level
+                                ).joinToString(" ")
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(displayName)
+                                            if (detail.isNotBlank()) {
+                                                Text(
+                                                    detail,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+                                    },
+                                    onClick = {
+                                        model = displayName
+                                        modelExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                OutlinedTextField(
+                    value = model,
+                    onValueChange = { model = it },
+                    label = { Text("Model") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             // Temperature Slider
             Text(

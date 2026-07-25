@@ -19,6 +19,7 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val isOllamaTesting by viewModel.isOllamaTesting.collectAsState()
     val ollamaWarmupMessage by viewModel.ollamaWarmupMessage.collectAsState()
     val isOllamaWarmingUp by viewModel.isOllamaWarmingUp.collectAsState()
+    val availableOllamaModels by viewModel.availableOllamaModels.collectAsState()
     val ollamaModels = remember(agents) {
         agents
             .asSequence()
@@ -53,6 +54,12 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
         // Create Agent Screen
         composable("create") {
             CreateAgentScreen(
+                availableOllamaModels = availableOllamaModels,
+                onFetchOllamaModels = { baseUrl, apiKey ->
+                    viewModel.fetchAvailableOllamaModels(baseUrl, apiKey)
+                },
+                ollamaBaseUrl = credentials.ollamaBaseUrl,
+                ollamaApiKey = credentials.ollamaApiKey,
                 onNavigateBack = { navController.popBackStack() },
                 onCreateAgent = { name, description, type, provider, systemPrompt, model, temperature ->
                     viewModel.createAgent(name, description, type, provider, systemPrompt, model, temperature)

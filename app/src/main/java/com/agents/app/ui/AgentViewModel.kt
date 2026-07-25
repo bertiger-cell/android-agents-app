@@ -43,6 +43,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val _isOllamaWarmingUp = MutableStateFlow(false)
     val isOllamaWarmingUp: StateFlow<Boolean> = _isOllamaWarmingUp.asStateFlow()
 
+    private val _availableOllamaModels = MutableStateFlow<List<OllamaModel>>(emptyList())
+    val availableOllamaModels: StateFlow<List<OllamaModel>> = _availableOllamaModels.asStateFlow()
+
     val credentials: StateFlow<ProviderCredentials> =
         credentialsRepository.credentials.stateIn(
             viewModelScope,
@@ -189,6 +192,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             } finally {
                 _isOllamaWarmingUp.value = false
             }
+        }
+    }
+
+    fun fetchAvailableOllamaModels(baseUrl: String, apiKey: String) {
+        viewModelScope.launch {
+            val models = aiService.fetchOllamaModels(baseUrl, apiKey)
+            _availableOllamaModels.value = models
         }
     }
 
