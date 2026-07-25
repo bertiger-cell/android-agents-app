@@ -78,7 +78,7 @@ data class ApiMessage(
     val content: String
 )
 
-// OpenAI-compatible Response (used by OpenRouter and Zen)
+// OpenAI-compatible Chat Response (used by OpenRouter and Zen)
 data class OpenAIResponse(
     val id: String?,
     val choices: List<OpenAIChoice>?,
@@ -99,6 +99,17 @@ data class OpenAIUsage(
     val prompt_tokens: Int?,
     val completion_tokens: Int?,
     val total_tokens: Int?
+)
+
+// OpenAI-compatible Models List Response (used by OpenRouter and Zen)
+data class OpenAIModelsResponse(
+    val data: List<OpenAIModel>?
+)
+
+data class OpenAIModel(
+    val id: String?,
+    val name: String?,
+    val description: String?
 )
 
 // Ollama Response

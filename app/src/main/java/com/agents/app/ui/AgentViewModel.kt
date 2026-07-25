@@ -36,8 +36,18 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isOllamaTesting = MutableStateFlow(false)
     val isOllamaTesting: StateFlow<Boolean> = _isOllamaTesting.asStateFlow()
+
+    // Ollama models
     private val _availableOllamaModels = MutableStateFlow<List<OllamaModel>>(emptyList())
     val availableOllamaModels: StateFlow<List<OllamaModel>> = _availableOllamaModels.asStateFlow()
+
+    // OpenRouter models
+    private val _availableOpenRouterModels = MutableStateFlow<List<OpenAIModel>>(emptyList())
+    val availableOpenRouterModels: StateFlow<List<OpenAIModel>> = _availableOpenRouterModels.asStateFlow()
+
+    // Zen models
+    private val _availableZenModels = MutableStateFlow<List<OpenAIModel>>(emptyList())
+    val availableZenModels: StateFlow<List<OpenAIModel>> = _availableZenModels.asStateFlow()
 
     val credentials: StateFlow<ProviderCredentials> =
         credentialsRepository.credentials.stateIn(
@@ -159,10 +169,31 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
     fun fetchAvailableOllamaModels(baseUrl: String, apiKey: String) {
         viewModelScope.launch {
             val models = aiService.fetchOllamaModels(baseUrl, apiKey)
             _availableOllamaModels.value = models
+        }
+    }
+
+    fun fetchAvailableOpenRouterModels(apiKey: String) {
+        viewModelScope.launch {
+            val models = aiService.fetchOpenAICompatibleModels(
+                endpoint = "https://openrouter.ai/api/v1/models",
+                apiKey = apiKey
+            )
+            _availableOpenRouterModels.value = models
+        }
+    }
+
+    fun fetchAvailableZenModels(apiKey: String) {
+        viewModelScope.launch {
+            val models = aiService.fetchOpenAICompatibleModels(
+                endpoint = "https://opencode.ai/zen/v1/models",
+                apiKey = apiKey
+            )
+            _availableZenModels.value = models
         }
     }
 

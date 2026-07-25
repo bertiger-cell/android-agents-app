@@ -12,14 +12,21 @@ import androidx.compose.ui.unit.dp
 import com.agents.app.models.AIProvider
 import com.agents.app.models.AgentType
 import com.agents.app.models.OllamaModel
+import com.agents.app.models.OpenAIModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAgentScreen(
     availableOllamaModels: List<OllamaModel> = emptyList(),
+    availableOpenRouterModels: List<OpenAIModel> = emptyList(),
+    availableZenModels: List<OpenAIModel> = emptyList(),
     onFetchOllamaModels: (String, String) -> Unit = { _, _ -> },
+    onFetchOpenRouterModels: (String) -> Unit = { _ -> },
+    onFetchZenModels: (String) -> Unit = { _ -> },
     ollamaBaseUrl: String = "",
     ollamaApiKey: String = "",
+    openRouterApiKey: String = "",
+    zenApiKey: String = "",
     onNavigateBack: () -> Unit,
     onCreateAgent: (
         name: String,
@@ -138,11 +145,10 @@ fun CreateAgentScreen(
                             onClick = {
                                 selectedProvider = provider
                                 providerExpanded = false
-                                // Set default model based on provider
                                 model = when (provider) {
-                                    AIProvider.OPENROUTER -> "openai/gpt-4o"
+                                    AIProvider.OPENROUTER -> availableOpenRouterModels.firstOrNull()?.id ?: ""
                                     AIProvider.OLLAMA -> availableOllamaModels.firstOrNull()?.name ?: ""
-                                    AIProvider.ZEN -> "big-pickle"
+                                    AIProvider.ZEN -> availableZenModels.firstOrNull()?.id ?: ""
                                 }
                             }
                         )
@@ -150,68 +156,39 @@ fun CreateAgentScreen(
                 }
             }
 
-            if (selectedProvider == AIProvider.OLLAMA) {
-                // Trigger model fetch when switching to Ollama
-                LaunchedEffect(selectedProvider) {
-                    if (ollamaBaseUrl.isNotBlank()) {
-                        onFetchOllamaModels(ollamaBaseUrl, ollamaApiKey)
-                    }
-                }
-
-                var modelExpanded by remember { mutableStateOf(false) }
-                ExposedDropdownMenuBox(
-                    expanded = modelExpanded,
-                    onExpandedChange = { modelExpanded = !modelExpanded }
-                ) {
-                    OutlinedTextField(
-                        value = model,
-                        onValueChange = { model = it },
-                        label = { Text("Model") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) },
-                        placeholder = { Text("Select or type model name") }
-                    )
-                    if (availableOllamaModels.isNotEmpty()) {
-                        ExposedDropdownMenu(
-                            expanded = modelExpanded,
-                            onDismissRequest = { modelExpanded = false }
-                        ) {
-                            availableOllamaModels.forEach { ollamaModel ->
-                                val displayName = ollamaModel.name ?: ollamaModel.model ?: ""
-                                val detail = listOfNotNull(
-                                    ollamaModel.details?.parameter_size,
-                                    ollamaModel.details?.quantization_level
-                                ).joinToString(" ")
-                                DropdownMenuItem(
-                                    text = {
-                                        Column {
-                                            Text(displayName)
-                                            if (detail.isNotBlank()) {
-                                                Text(
-                                                    detail,
-                                                    style = MaterialTheme.typography.bodySmall,
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        model = displayName
-                                        modelExpanded = false
-                                    }
-                                )
-                            }
+            // Model selection per provider
+            when (selectedProvider) {
+                AIProvider.OLLAMA -> OllamaModelPicker(
+                    model = model,
+                    onModelChange = { model = it },
+                    availableModels = availableOllamaModels,
+                    onFetchModels = {
+                        if (ollamaBaseUrl.isNotBlank()) {
+                            onFetchOllamaModels(ollamaBaseUrl, ollamaApiKey)
                         }
                     }
-                }
-            } else {
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it },
-                    label = { Text("Model") },
-                    modifier = Modifier.fillMaxWidth()
+                )
+                AIProvider.OPENROUTER -> OpenAICompatibleModelPicker(
+                    model = model,
+                    onModelChange = { model = it },
+                    availableModels = availableOpenRouterModels,
+                    onFetchModels = {
+                        if (openRouterApiKey.isNotBlank()) {
+                            onFetchOpenRouterModels(openRouterApiKey)
+                        }
+                    },
+                    providerName = "OpenRouter"
+                )
+                AIProvider.ZEN -> OpenAICompatibleModelPicker(
+                    model = model,
+                    onModelChange = { model = it },
+                    availableModels = availableZenModels,
+                    onFetchModels = {
+                        if (zenApiKey.isNotBlank()) {
+                            onFetchZenModels(zenApiKey)
+                        }
+                    },
+                    providerName = "Zen"
                 )
             }
 
@@ -253,6 +230,122 @@ fun CreateAgentScreen(
                 enabled = name.isNotBlank()
             ) {
                 Text("Create Agent")
+            }
+        }
+    }
+}
+
+@Composable
+private fun OllamaModelPicker(
+    model: String,
+    onModelChange: (String) -> Unit,
+    availableModels: List<OllamaModel>,
+    onFetchModels: () -> Unit
+) {
+    LaunchedEffect(Unit) { onFetchModels() }
+
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = model,
+            onValueChange = { onModelChange(it) },
+            label = { Text("Model") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            placeholder = { Text("Select or type model name") }
+        )
+        if (availableModels.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                availableModels.forEach { ollamaModel ->
+                    val displayName = ollamaModel.name ?: ollamaModel.model ?: ""
+                    val detail = listOfNotNull(
+                        ollamaModel.details?.parameter_size,
+                        ollamaModel.details?.quantization_level
+                    ).joinToString(" ")
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(displayName)
+                                if (detail.isNotBlank()) {
+                                    Text(
+                                        detail,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            onModelChange(displayName)
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OpenAICompatibleModelPicker(
+    model: String,
+    onModelChange: (String) -> Unit,
+    availableModels: List<OpenAIModel>,
+    onFetchModels: () -> Unit,
+    providerName: String
+) {
+    LaunchedEffect(Unit) { onFetchModels() }
+
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded }
+    ) {
+        OutlinedTextField(
+            value = model,
+            onValueChange = { onModelChange(it) },
+            label = { Text("Model") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .menuAnchor(),
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            placeholder = { Text("Select or type $providerName model") }
+        )
+        if (availableModels.isNotEmpty()) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                availableModels.forEach { openAIModel ->
+                    val modelId = openAIModel.id ?: ""
+                    val displayName = openAIModel.name ?: modelId
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(displayName)
+                                if (openAIModel.description.isNotBlank()) {
+                                    Text(
+                                        openAIModel.description.take(80),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
+                        onClick = {
+                            onModelChange(modelId)
+                            expanded = false
+                        }
+                    )
+                }
             }
         }
     }

@@ -35,7 +35,16 @@ fun ChatScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(agent.name) },
+                title = {
+                    Column {
+                        Text(agent.name)
+                        Text(
+                            text = agent.model,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                        )
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
@@ -52,7 +61,6 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Warning if no API key
             if (!credentialsAvailable) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
@@ -67,7 +75,6 @@ fun ChatScreen(
                 }
             }
 
-            // Messages List
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -99,7 +106,6 @@ fun ChatScreen(
                 }
             }
 
-            // Input Field
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

@@ -18,6 +18,8 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val ollamaTestMessage by viewModel.ollamaTestMessage.collectAsState()
     val isOllamaTesting by viewModel.isOllamaTesting.collectAsState()
     val availableOllamaModels by viewModel.availableOllamaModels.collectAsState()
+    val availableOpenRouterModels by viewModel.availableOpenRouterModels.collectAsState()
+    val availableZenModels by viewModel.availableZenModels.collectAsState()
 
     NavHost(navController = navController, startDestination = "agents") {
         composable("agents") {
@@ -42,11 +44,21 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
         composable("create") {
             CreateAgentScreen(
                 availableOllamaModels = availableOllamaModels,
+                availableOpenRouterModels = availableOpenRouterModels,
+                availableZenModels = availableZenModels,
                 onFetchOllamaModels = { baseUrl, apiKey ->
                     viewModel.fetchAvailableOllamaModels(baseUrl, apiKey)
                 },
+                onFetchOpenRouterModels = { apiKey ->
+                    viewModel.fetchAvailableOpenRouterModels(apiKey)
+                },
+                onFetchZenModels = { apiKey ->
+                    viewModel.fetchAvailableZenModels(apiKey)
+                },
                 ollamaBaseUrl = credentials.ollamaBaseUrl,
                 ollamaApiKey = credentials.ollamaApiKey,
+                openRouterApiKey = credentials.openRouterKey,
+                zenApiKey = credentials.zenKey,
                 onNavigateBack = { navController.popBackStack() },
                 onCreateAgent = { name, description, type, provider, systemPrompt, model, temperature ->
                     viewModel.createAgent(name, description, type, provider, systemPrompt, model, temperature)

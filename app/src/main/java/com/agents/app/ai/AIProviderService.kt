@@ -155,6 +155,33 @@ class AIProviderService {
     }
 
 
+
+    suspend fun fetchOpenAICompatibleModels(
+        endpoint: String,
+        apiKey: String
+    ): List<OpenAIModel> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(endpoint)
+                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Content-Type", "application/json")
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            val responseBody = response.body?.string() ?: return@withContext emptyList()
+
+            if (!response.isSuccessful) {
+                return@withContext emptyList()
+            }
+
+            val modelsResponse = gson.fromJson(responseBody, OpenAIModelsResponse::class.java)
+            return@withContext modelsResponse.data ?: emptyList()
+        } catch (e: Exception) {
+            return@withContext emptyList()
+        }
+    }
+
     private fun callOpenAiCompatible(
         endpoint: String,
         apiKey: String,
