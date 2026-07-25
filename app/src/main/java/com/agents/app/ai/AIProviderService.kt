@@ -176,7 +176,8 @@ class AIProviderService {
                     mapOf("role" to "user", "content" to "ping")
                 ),
                 "keep_alive" to keepAlive,
-                "stream" to false
+                "stream" to false,
+                "options" to mapOf("num_ctx" to 4096, "num_thread" to 8, "num_batch" to 512)
             )
 
             val json = gson.toJson(requestBody)
@@ -274,7 +275,7 @@ class AIProviderService {
             val requestBody = mapOf(
                 "model" to model,
                 "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
-                "options" to mapOf("temperature" to temperature, "num_ctx" to 2048, "num_thread" to 4),
+                "options" to mapOf("temperature" to temperature, "num_ctx" to 4096, "num_thread" to 8, "num_batch" to 512),
                 "stream" to false,
                 "keep_alive" to keepAlive
             )
