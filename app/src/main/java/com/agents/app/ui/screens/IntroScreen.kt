@@ -54,7 +54,7 @@ fun IntroScreen(onFinished: () -> Unit) {
         "Ich hab euch vermisst!",
         "Bereit fuer neue Abenteuer?",
         " Hoffentlich die API-Keys nicht vergessen...",
-        "Lade KI-Intelligenz... 42%...",
+        "Lade KI-Intelligenz... 42%... noch Geduld...",
         "Zeit was Cooles zu bauen!"
     )
 
