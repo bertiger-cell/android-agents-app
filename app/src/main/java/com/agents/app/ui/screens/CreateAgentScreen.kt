@@ -14,6 +14,58 @@ import com.agents.app.models.AgentType
 import com.agents.app.models.OllamaModel
 import com.agents.app.models.OpenAIModel
 
+private data class AgentTemplate(
+    val name: String,
+    val description: String,
+    val systemPrompt: String,
+    val provider: AIProvider,
+    val model: String,
+    val temperature: Float
+)
+
+private fun getDefaultTemplates(): List<AgentTemplate> = listOf(
+    AgentTemplate(
+        name = "Code Assistant",
+        description = "Hilft beim Programmieren, Debugging und Code-Review",
+        systemPrompt = "Du bist ein erfahrener Software-Entwickler. Hilf beim Programmieren, erkläre Code, finde Bugs und schlage Verbesserungen vor. Antworte präzise und gib konkrete Code-Beispiele.",
+        provider = AIProvider.OPENROUTER,
+        model = "openai/gpt-4o",
+        temperature = 0.3f
+    ),
+    AgentTemplate(
+        name = "Creative Writer",
+        description = "Kreatives Schreiben, Geschichten, Artikel",
+        systemPrompt = "Du bist ein kreativer Autor. Schreibe ansprechende Texte, Geschichten oder Artikel. Sei bildhaft, inspirierend und passe den Stil an den Kontext an.",
+        provider = AIProvider.OPENROUTER,
+        model = "openai/gpt-4o",
+        temperature = 0.9f
+    ),
+    AgentTemplate(
+        name = "Research Mode",
+        description = "Recherchiert Themen und fasst Ergebnisse zusammen",
+        systemPrompt = "Du bist ein fleißiger Researcher. Recherchiere Themen gründlich, fasse Zusammen, zitiere Quellen und strukturiere die Ergebnisse übersichtlich.",
+        provider = AIProvider.OPENROUTER,
+        model = "openai/gpt-4o",
+        temperature = 0.5f
+    ),
+    AgentTemplate(
+        name = "Translator",
+        description = "Übersetzt Texte zwischen Sprachen",
+        systemPrompt = "Du bist ein professioneller Übersetzer. Übersetze Texte genau und flüssig zwischen den gewünschten Sprachen. Behalte den Ton und die Bedeutung bei.",
+        provider = AIProvider.OPENROUTER,
+        model = "openai/gpt-4o",
+        temperature = 0.3f
+    ),
+    AgentTemplate(
+        name = "Local Ollama General",
+        description = "Allzweck-Assistent via Ollama (lokal)",
+        systemPrompt = "You are a helpful AI assistant.",
+        provider = AIProvider.OLLAMA,
+        model = "",
+        temperature = 0.7f
+    )
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAgentScreen(
@@ -45,9 +97,22 @@ fun CreateAgentScreen(
     var temperature by remember { mutableStateOf(0.7f) }
     var selectedType by remember { mutableStateOf(AgentType.GENERAL) }
     var selectedProvider by remember { mutableStateOf(AIProvider.OPENROUTER) }
+    var selectedTemplate by remember { mutableStateOf<AgentTemplate?>(null) }
 
+    val templates = remember { getDefaultTemplates() }
     val agentTypes = AgentType.entries
     val aiProviders = AIProvider.entries
+
+    // Prefill fields when template is selected
+    LaunchedEffect(selectedTemplate) {
+        selectedTemplate?.let { t ->
+            systemPrompt = t.systemPrompt
+            selectedProvider = t.provider
+            model = t.model
+            temperature = t.temperature
+            if (description.isBlank()) description = t.description
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -72,6 +137,50 @@ fun CreateAgentScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Template Dropdown
+            Text("Quick Start", style = MaterialTheme.typography.titleSmall)
+            var templateExpanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = templateExpanded,
+                onExpandedChange = { templateExpanded = !templateExpanded }
+            ) {
+                OutlinedTextField(
+                    value = selectedTemplate?.name ?: "Choose a template...",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Agent Template") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = templateExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = templateExpanded,
+                    onDismissRequest = { templateExpanded = false }
+                ) {
+                    templates.forEach { template ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(template.name)
+                                    Text(
+                                        template.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            onClick = {
+                                selectedTemplate = template
+                                templateExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider()
+
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
