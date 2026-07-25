@@ -87,6 +87,7 @@ data class OpenAIResponse(
 
 data class OpenAIChoice(
     val message: OpenAIMessage?,
+    val delta: OpenAIMessage?,
     val finish_reason: String?
 )
 
