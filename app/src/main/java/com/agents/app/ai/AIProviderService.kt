@@ -7,7 +7,10 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
+import okio.BufferedSource
 import java.util.concurrent.TimeUnit
 
 class AIProviderService {
@@ -281,6 +284,135 @@ class AIProviderService {
             return Pair(output, 0)
         } catch (e: Exception) {
             throw Exception("Ollama-Aufruf fehlgeschlagen bei $requestUrl: ${e.message ?: "Unbekannter Fehler"}")
+        }
+    }
+
+
+    // --- Streaming variants (V2) ---
+
+    fun streamOpenAiCompatible(
+        endpoint: String,
+        apiKey: String,
+        model: String,
+        messages: List<ApiMessage>,
+        maxTokens: Int,
+        temperature: Float,
+        extraHeaders: Map<String, String> = emptyMap()
+    ): Flow<String> = flow {
+        val requestBody = mapOf(
+            "model" to model,
+            "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
+            "max_tokens" to maxTokens,
+            "temperature" to temperature,
+            "stream" to true
+        )
+
+        val json = gson.toJson(requestBody)
+        val mediaType = "application/json".toMediaType()
+        val body = json.toRequestBody(mediaType)
+
+        val requestBuilder = Request.Builder()
+            .url(endpoint)
+            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("Content-Type", "application/json")
+
+        for ((key, value) in extraHeaders) {
+            requestBuilder.addHeader(key, value)
+        }
+
+        val request = requestBuilder.post(body).build()
+        val response = client.newCall(request).execute()
+
+        if (!response.isSuccessful) {
+            val errorBody = response.body?.string() ?: "Empty error"
+            throw Exception("Streaming error (${response.code}): ${errorBody.take(500)}")
+        }
+
+        val source: BufferedSource = response.body?.source()
+            ?: throw Exception("Empty streaming response")
+
+        try {
+            while (!source.exhausted()) {
+                val line = source.readUtf8Line() ?: continue
+
+                // SSE format: "data: {...}" or "data: [DONE]"
+                if (!line.startsWith("data: ")) continue
+                val data = line.removePrefix("data: ").trim()
+                if (data == "[DONE]") break
+
+                val chunk = runCatching {
+                    gson.fromJson(data, OpenAIResponse::class.java)
+                }.getOrNull() ?: continue
+
+                val token = chunk.choices?.firstOrNull()?.message?.content
+                if (!token.isNullOrBlank()) {
+                    emit(token)
+                }
+            }
+        } finally {
+            response.body?.close()
+        }
+    }
+
+    fun streamOllama(
+        apiKey: String,
+        baseUrl: String,
+        model: String,
+        messages: List<ApiMessage>,
+        temperature: Float,
+        keepAlive: String
+    ): Flow<String> = flow {
+        val requestUrl = buildOllamaUrl(baseUrl, "/api/chat")
+
+        val requestBody = mapOf(
+            "model" to model,
+            "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
+            "options" to mapOf("temperature" to temperature, "num_ctx" to 4096, "num_thread" to 8, "num_batch" to 512),
+            "stream" to true,
+            "keep_alive" to keepAlive
+        )
+
+        val json = gson.toJson(requestBody)
+        val mediaType = "application/json".toMediaType()
+        val body = json.toRequestBody(mediaType)
+
+        val requestBuilder = Request.Builder()
+            .url(requestUrl)
+            .addHeader("Content-Type", "application/json")
+
+        if (apiKey.isNotBlank()) {
+            requestBuilder.addHeader("Authorization", "Bearer $apiKey")
+        }
+
+        val request = requestBuilder.post(body).build()
+        val response = client.newCall(request).execute()
+
+        if (!response.isSuccessful) {
+            val errorBody = response.body?.string() ?: "Empty error"
+            throw Exception("Ollama streaming error (${response.code}) bei $requestUrl: ${errorBody.take(500)}")
+        }
+
+        val source: BufferedSource = response.body?.source()
+            ?: throw Exception("Empty Ollama streaming response")
+
+        try {
+            while (!source.exhausted()) {
+                val line = source.readUtf8Line() ?: continue
+                if (line.isBlank()) continue
+
+                val chunk = runCatching {
+                    gson.fromJson(line, OllamaResponse::class.java)
+                }.getOrNull() ?: continue
+
+                val token = chunk.message?.content
+                if (!token.isNullOrBlank()) {
+                    emit(token)
+                }
+
+                if (chunk.done == true) break
+            }
+        } finally {
+            response.body?.close()
         }
     }
 
