@@ -110,12 +110,12 @@ fun SettingsScreen(
                 onValueChange = { ollamaBaseUrl = it },
                 label = { Text("Base URL") },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("http://10.0.2.2:11434") }
+                placeholder = { Text("https://ollama.com") }
             )
             OutlinedTextField(
                 value = ollamaApiKey,
                 onValueChange = { ollamaApiKey = it },
-                label = { Text("Cloud API Key (optional)") },
+                label = { Text("API Key (fuer Cloud erforderlich)") },
                 modifier = Modifier.fillMaxWidth(),
                 visualTransformation = if (showOllamaKey) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
@@ -146,7 +146,7 @@ fun SettingsScreen(
                 }
             }
             Text(
-                text = "Termux: Auf einem echten Geraet die LAN-IP des Termux-Hosts eintragen. Im Emulator funktioniert oft 10.0.2.2. 127.0.0.1 reicht nur, wenn App und Ollama wirklich im selben Netzbereich laufen.",
+                text = "Ollama Cloud: https://ollama.com + API Key erforderlich. Lokal: http://127.0.0.1:11434",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
