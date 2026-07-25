@@ -17,21 +17,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val credentials by viewModel.credentials.collectAsState()
     val ollamaTestMessage by viewModel.ollamaTestMessage.collectAsState()
     val isOllamaTesting by viewModel.isOllamaTesting.collectAsState()
-    val ollamaWarmupMessage by viewModel.ollamaWarmupMessage.collectAsState()
-    val isOllamaWarmingUp by viewModel.isOllamaWarmingUp.collectAsState()
     val availableOllamaModels by viewModel.availableOllamaModels.collectAsState()
-    val ollamaModels = remember(agents) {
-        agents
-            .asSequence()
-            .filter { it.provider == AIProvider.OLLAMA }
-            .map { it.model }
-            .filter { it.isNotBlank() }
-            .distinct()
-            .toList()
-    }
 
     NavHost(navController = navController, startDestination = "agents") {
-        // Agent List Screen
         composable("agents") {
             AgentListScreen(
                 agents = agents,
@@ -51,7 +39,6 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
             )
         }
 
-        // Create Agent Screen
         composable("create") {
             CreateAgentScreen(
                 availableOllamaModels = availableOllamaModels,
@@ -67,7 +54,6 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
             )
         }
 
-        // Chat Screen
         composable("chat") {
             selectedAgent?.let { agent ->
                 ChatScreen(
@@ -90,24 +76,17 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
             }
         }
 
-        // Settings Screen
         composable("settings") {
             SettingsScreen(
                 credentials = credentials,
-                ollamaModels = ollamaModels,
                 ollamaTestMessage = ollamaTestMessage,
                 isOllamaTesting = isOllamaTesting,
-                ollamaWarmupMessage = ollamaWarmupMessage,
-                isOllamaWarmingUp = isOllamaWarmingUp,
                 onUpdateOpenRouterKey = { viewModel.updateOpenRouterKey(it) },
                 onUpdateZenKey = { viewModel.updateZenKey(it) },
                 onUpdateOllamaBaseUrl = { viewModel.updateOllamaBaseUrl(it) },
                 onUpdateOllamaApiKey = { viewModel.updateOllamaApiKey(it) },
                 onTestOllamaConnection = { baseUrl, apiKey ->
                     viewModel.testOllamaConnection(baseUrl, apiKey)
-                },
-                onWarmUpOllamaModels = { baseUrl, apiKey, models ->
-                    viewModel.warmUpOllamaModels(baseUrl, apiKey, models)
                 },
                 onNavigateBack = { navController.popBackStack() }
             )

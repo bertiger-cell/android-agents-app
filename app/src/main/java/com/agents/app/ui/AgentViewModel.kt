@@ -36,13 +36,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isOllamaTesting = MutableStateFlow(false)
     val isOllamaTesting: StateFlow<Boolean> = _isOllamaTesting.asStateFlow()
-
-    private val _ollamaWarmupMessage = MutableStateFlow<String?>(null)
-    val ollamaWarmupMessage: StateFlow<String?> = _ollamaWarmupMessage.asStateFlow()
-
-    private val _isOllamaWarmingUp = MutableStateFlow(false)
-    val isOllamaWarmingUp: StateFlow<Boolean> = _isOllamaWarmingUp.asStateFlow()
-
     private val _availableOllamaModels = MutableStateFlow<List<OllamaModel>>(emptyList())
     val availableOllamaModels: StateFlow<List<OllamaModel>> = _availableOllamaModels.asStateFlow()
 
@@ -166,35 +159,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-
-    fun warmUpOllamaModels(baseUrl: String, apiKey: String, models: List<String>) {
-        viewModelScope.launch {
-            _isOllamaWarmingUp.value = true
-            _ollamaWarmupMessage.value = null
-
-            try {
-                val uniqueModels = models.filter { it.isNotBlank() }.distinct()
-                val results = uniqueModels.map { model ->
-                    aiService.warmUpOllama(
-                        baseUrl = baseUrl,
-                        apiKey = apiKey,
-                        model = model
-                    )
-                }
-
-                _ollamaWarmupMessage.value = if (results.isEmpty()) {
-                    "No Ollama models configured yet."
-                } else {
-                    results.joinToString("\n") { result -> result.message }
-                }
-            } catch (e: Exception) {
-                _ollamaWarmupMessage.value = e.message ?: "Unbekannter Fehler"
-            } finally {
-                _isOllamaWarmingUp.value = false
-            }
-        }
-    }
-
     fun fetchAvailableOllamaModels(baseUrl: String, apiKey: String) {
         viewModelScope.launch {
             val models = aiService.fetchOllamaModels(baseUrl, apiKey)

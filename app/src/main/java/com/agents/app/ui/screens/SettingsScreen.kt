@@ -19,17 +19,13 @@ import com.agents.app.data.ProviderCredentials
 @Composable
 fun SettingsScreen(
     credentials: ProviderCredentials,
-    ollamaModels: List<String>,
     ollamaTestMessage: String?,
     isOllamaTesting: Boolean,
-    ollamaWarmupMessage: String?,
-    isOllamaWarmingUp: Boolean,
     onUpdateOpenRouterKey: (String) -> Unit,
     onUpdateZenKey: (String) -> Unit,
     onUpdateOllamaBaseUrl: (String) -> Unit,
     onUpdateOllamaApiKey: (String) -> Unit,
     onTestOllamaConnection: (String, String) -> Unit,
-    onWarmUpOllamaModels: (String, String, List<String>) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -150,27 +146,6 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            OutlinedButton(
-                onClick = {
-                    onWarmUpOllamaModels(ollamaBaseUrl, ollamaApiKey, ollamaModels)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isOllamaWarmingUp && ollamaModels.any { it.isNotBlank() }
-            ) {
-                Text(
-                    if (isOllamaWarmingUp) {
-                        "Warming up..."
-                    } else {
-                        "Warm up Ollama models (${ollamaModels.count { it.isNotBlank() }})"
-                    }
-                )
-            }
-            if (ollamaWarmupMessage != null) {
-                Text(
-                    text = ollamaWarmupMessage.orEmpty(),
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
             Divider()
 
             Button(
