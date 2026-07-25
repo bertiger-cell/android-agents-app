@@ -21,7 +21,23 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val availableOpenRouterModels by viewModel.availableOpenRouterModels.collectAsState()
     val availableZenModels by viewModel.availableZenModels.collectAsState()
 
-    NavHost(navController = navController, startDestination = "agents") {
+    NavHost(navController = navController, startDestination = "home") {
+        composable("home") {
+            HomeScreen(
+                agents = agents,
+                onSelectAgent = { agent ->
+                    viewModel.selectAgent(agent)
+                    navController.navigate("chat")
+                },
+                onShowAllAgents = {
+                    navController.navigate("agents")
+                },
+                onSettings = {
+                    navController.navigate("settings")
+                }
+            )
+        }
+
         composable("agents") {
             AgentListScreen(
                 agents = agents,
