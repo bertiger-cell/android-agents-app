@@ -33,7 +33,6 @@ private val DarkColorScheme = darkColorScheme(
     outline = Color(0xFF938F99),
     error = Color(0xFFCF6679),
     onError = Color(0xFF140404),
-    surfaceTonal = Color(0xFF222222)
 )
 
 private val LightColorScheme = lightColorScheme(
