@@ -288,6 +288,75 @@ class AIProviderService {
     }
 
 
+    // --- Streaming message API (V2) ---
+
+    fun streamMessage(
+        provider: AIProvider,
+        apiKey: String,
+        baseUrl: String,
+        model: String,
+        messages: List<ApiMessage>,
+        maxTokens: Int = 4096,
+        temperature: Float = 0.7f,
+        keepAlive: String = "30m"
+    ): Flow<AgentResult> = flow {
+        val startTime = System.currentTimeMillis()
+        val fullResponse = StringBuilder()
+        var totalTokens = 0
+
+        try {
+            val tokenFlow = when (provider) {
+                AIProvider.OPENROUTER -> streamOpenAiCompatible(
+                    endpoint = "https://openrouter.ai/api/v1/chat/completions",
+                    apiKey = apiKey,
+                    model = model,
+                    messages = messages,
+                    maxTokens = maxTokens,
+                    temperature = temperature,
+                    extraHeaders = mapOf(
+                        "HTTP-Referer" to "https://github.com/bertiger-cell/android-agents-app",
+                        "X-Title" to "Android Agents App"
+                    )
+                )
+                AIProvider.ZEN -> streamOpenAiCompatible(
+                    endpoint = "https://opencode.ai/zen/v1/chat/completions",
+                    apiKey = apiKey,
+                    model = model,
+                    messages = messages,
+                    maxTokens = maxTokens,
+                    temperature = temperature
+                )
+                AIProvider.OLLAMA -> streamOllama(
+                    apiKey = apiKey,
+                    baseUrl = baseUrl,
+                    model = model,
+                    messages = messages,
+                    temperature = temperature,
+                    keepAlive = keepAlive
+                )
+            }
+
+            tokenFlow.collect { token ->
+                fullResponse.append(token)
+                totalTokens++
+                emit(AgentResult(
+                    success = true,
+                    output = fullResponse.toString(),
+                    tokensUsed = totalTokens,
+                    executionTimeMs = System.currentTimeMillis() - startTime
+                ))
+            }
+        } catch (e: Exception) {
+            emit(AgentResult(
+                success = false,
+                output = fullResponse.toString(),
+                error = e.message ?: "Unknown error",
+                tokensUsed = totalTokens,
+                executionTimeMs = System.currentTimeMillis() - startTime
+            ))
+        }
+    }
+
     // --- Streaming variants (V2) ---
 
     fun streamOpenAiCompatible(
@@ -344,7 +413,8 @@ class AIProviderService {
                     gson.fromJson(data, OpenAIResponse::class.java)
                 }.getOrNull() ?: continue
 
-                val token = chunk.choices?.firstOrNull()?.message?.content
+                val choice = chunk.choices?.firstOrNull()
+                val token = choice?.delta?.content ?: choice?.message?.content
                 if (!token.isNullOrBlank()) {
                     emit(token)
                 }

@@ -9,6 +9,7 @@ import com.agents.app.ai.AIProviderService
 import com.agents.app.data.ProviderCredentials
 import com.agents.app.data.ProviderCredentialsRepository
 import com.agents.app.models.*
+import com.agents.app.models.ApiMessage
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -125,12 +126,62 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 AIProvider.ZEN -> creds.zenKey to ""
                 AIProvider.OLLAMA -> creds.ollamaApiKey to creds.ollamaBaseUrl
             }
-            val result = repository.chat(
-                agent = agent,
-                userMessage = content,
-                apiKey = apiKey,
-                baseUrl = baseUrl
+
+            // Build message list with history
+            val history = repository.getMessagesByAgent(agent.id).first()
+            val messages = mutableListOf<ApiMessage>()
+            messages.add(ApiMessage(role = "system", content = agent.systemPrompt))
+            messages.addAll(history.map { ApiMessage(role = it.role.name.lowercase(), content = it.content) })
+            messages.add(ApiMessage(role = "user", content = content))
+
+            // Save user message to DB
+            repository.addMessage(
+                Message(agentId = agent.id, role = MessageRole.USER, content = content)
             )
+
+            // Stream response
+            val streamingMessageId = java.util.UUID.randomUUID().toString()
+            var finalOutput = ""
+
+            aiService.streamMessage(
+                provider = agent.provider,
+                apiKey = apiKey,
+                baseUrl = baseUrl,
+                model = agent.model,
+                messages = messages,
+                maxTokens = agent.maxTokens,
+                temperature = agent.temperature
+            ).collect { result ->
+                finalOutput = result.output
+                // Update streaming message in the list
+                val streamingMsg = Message(
+                    id = streamingMessageId,
+                    agentId = agent.id,
+                    role = MessageRole.ASSISTANT,
+                    content = result.output,
+                    tokenCount = result.tokensUsed
+                )
+                val currentMessages = _messages.value.toMutableList()
+                val existingIndex = currentMessages.indexOfFirst { it.id == streamingMessageId }
+                if (existingIndex >= 0) {
+                    currentMessages[existingIndex] = streamingMsg
+                } else {
+                    currentMessages.add(streamingMsg)
+                }
+                _messages.value = currentMessages
+            }
+
+            // Save final response to DB
+            repository.addMessage(
+                Message(
+                    agentId = agent.id,
+                    role = MessageRole.ASSISTANT,
+                    content = finalOutput,
+                    tokenCount = finalOutput.split("\\s+".toRegex()).size
+                )
+            )
+            repository.updateAgent(agent.copy(lastRunAt = System.currentTimeMillis()))
+
             _isLoading.value = false
         }
     }
