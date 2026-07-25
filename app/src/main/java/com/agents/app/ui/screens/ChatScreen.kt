@@ -32,6 +32,13 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
+    // Auto-scroll when messages change (streaming updates)
+    LaunchedEffect(messages.size, messages.lastOrNull()?.content) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -87,15 +94,14 @@ fun ChatScreen(
                     MessageBubble(message = message)
                 }
 
-                if (isLoading) {
+                // Typing indicator while streaming
+                if (isLoading && messages.lastOrNull()?.role == MessageRole.USER) {
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Start
                         ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp)
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Thinking...",
@@ -125,9 +131,6 @@ fun ChatScreen(
                         if (inputText.isNotBlank()) {
                             onSendMessage(inputText)
                             inputText = ""
-                            coroutineScope.launch {
-                                listState.animateScrollToItem(messages.size)
-                            }
                         }
                     },
                     enabled = inputText.isNotBlank() && !isLoading
