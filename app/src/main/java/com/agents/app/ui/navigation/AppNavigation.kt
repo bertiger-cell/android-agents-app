@@ -74,7 +74,7 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                     agent = agent,
                     messages = messages,
                     isLoading = isLoading,
-                    apiKeyAvailable = when (agent.provider) {
+                    credentialsAvailable = when (agent.provider) {
                         AIProvider.OPENROUTER -> credentials.openRouterKey.isNotBlank()
                         AIProvider.ZEN -> credentials.zenKey.isNotBlank()
                         AIProvider.OLLAMA -> credentials.ollamaBaseUrl.isNotBlank()

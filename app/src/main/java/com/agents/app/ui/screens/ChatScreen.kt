@@ -23,7 +23,7 @@ fun ChatScreen(
     agent: Agent,
     messages: List<Message>,
     isLoading: Boolean,
-    apiKeyAvailable: Boolean,
+    credentialsAvailable: Boolean,
     onSendMessage: (String) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -53,7 +53,7 @@ fun ChatScreen(
                 .padding(padding)
         ) {
             // Warning if no API key
-            if (!apiKeyAvailable) {
+            if (!credentialsAvailable) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.errorContainer

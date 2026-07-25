@@ -11,15 +11,6 @@ enum class AIProvider {
     ZEN
 }
 
-// Agent Status
-enum class AgentStatus {
-    IDLE,
-    RUNNING,
-    COMPLETED,
-    FAILED,
-    STOPPED
-}
-
 // Agent Types for Specialized Agents
 enum class AgentType {
     GENERAL,
@@ -82,19 +73,12 @@ data class OllamaConnectionResult(
 )
 
 // API Request/Response Models
-data class ChatRequest(
-    val model: String,
-    val messages: List<ApiMessage>,
-    val maxTokens: Int = 4096,
-    val temperature: Float = 0.7f
-)
-
 data class ApiMessage(
     val role: String,
     val content: String
 )
 
-// OpenAI Response
+// OpenAI-compatible Response (used by OpenRouter and Zen)
 data class OpenAIResponse(
     val id: String?,
     val choices: List<OpenAIChoice>?,
@@ -115,23 +99,6 @@ data class OpenAIUsage(
     val prompt_tokens: Int?,
     val completion_tokens: Int?,
     val total_tokens: Int?
-)
-
-// Anthropic Response
-data class AnthropicResponse(
-    val id: String?,
-    val content: List<AnthropicContent>?,
-    val usage: AnthropicUsage?
-)
-
-data class AnthropicContent(
-    val type: String?,
-    val text: String?
-)
-
-data class AnthropicUsage(
-    val input_tokens: Int?,
-    val output_tokens: Int?
 )
 
 // Ollama Response
@@ -166,16 +133,4 @@ data class OllamaModelDetails(
 data class OllamaMessage(
     val role: String?,
     val content: String?
-)
-
-// Automation Task
-data class AutomationTask(
-    val id: String = UUID.randomUUID().toString(),
-    val agentId: String,
-    val name: String,
-    val description: String,
-    val schedule: String? = null, // cron expression
-    val isEnabled: Boolean = true,
-    val lastExecuted: Long? = null,
-    val nextExecution: Long? = null
 )
