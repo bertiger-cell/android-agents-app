@@ -82,7 +82,7 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
             )
 
-            HorizontalDivider()
+            Divider()
 
             // Recent agents
             Text(

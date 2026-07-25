@@ -179,7 +179,7 @@ fun CreateAgentScreen(
                 }
             }
 
-            HorizontalDivider()
+            Divider()
 
             OutlinedTextField(
                 value = name,
