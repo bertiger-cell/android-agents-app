@@ -1,38 +1,65 @@
 # Architektur – android-agents-app
 
-## Zweck (v1)
+## Zweck (v1.5)
 
-Android-App zur Verwaltung von KI-Agenten (DB-gestützt) mit Chat über
-drei Provider-Optionen: OpenRouter, OpenCode Zen, Ollama (lokal oder
-cloud).
+Android-App zur Verwaltung von KI-Agenten (DB-gestützt) mit
+Streaming-Chat über drei Provider: OpenRouter, OpenCode Zen,
+Ollama (lokal oder cloud). Animierter Intro-Screen,
+Agent-Vorlagen, Dark Theme mit intensiven Farben.
+
+## Feature-Übersicht
+
+- Streaming-Antworten (Token für Token via Flow)
+- Model-Picker pro Provider (API-gestützt)
+- Agent-Vorlagen (Code Assistant, Creative Writer, etc.)
+- Animierter Intro-Screen mit wechselnden Sprüchen
+- HomeScreen mit Uhrzeit und letzter Aktivität
+- Dark Theme mit Shapes und intensiven Farben
+- Screen-Transitions (fade + slide)
 
 ## Pattern
 
-Zentraler Service statt Interface pro Provider – bewusst so für v1:
+Zentraler Service statt Interface pro Provider:
 
-- `AIProviderService` (in `ai/`) – eine Klasse mit `sendMessage()`,
-  verzweigt über `when(provider)` via gemeinsamer
-  `callOpenAiCompatible()` für OpenRouter/Zen und `callOllama()` für
-  Ollama.
+- `AIProviderService` (in `ai/`) – eine Klasse mit:
+  - `sendMessage()` – synchron (Legacy, für AgentRepository)
+  - `streamMessage()` – streaming, gibt `Flow<AgentResult>` zurück
+  - `streamOpenAiCompatible()` – SSE-Parsing für OpenRouter/Zen
+  - `streamOllama()` – NDJSON-Parsing für Ollama
+  - `fetchOpenAICompatibleModels()` – Model-Liste laden
+  - `testOllamaConnection()` – Verbindungstest
 - `AIProvider` – Enum: `OPENROUTER`, `OLLAMA`, `ZEN`
 
 ## Provider-Details
 
 ### OpenRouter
-- Endpoint: `https://openrouter.ai/api/v1/chat/completions`
+- Chat: `https://openrouter.ai/api/v1/chat/completions` (SSE)
+- Models: `https://openrouter.ai/api/v1/models`
 - Auth: `Authorization: Bearer <apiKey>`
-- Response: OpenAI-kompatibel (`OpenAIResponse`)
 
 ### OpenCode Zen
-- Endpoint: `https://opencode.ai/zen/v1/chat/completions`
+- Chat: `https://opencode.ai/zen/v1/chat/completions` (SSE)
+- Models: `https://opencode.ai/zen/v1/models`
 - Auth: `Authorization: Bearer <apiKey>`
-- Response: OpenAI-kompatibel (`OpenAIResponse`)
 
 ### Ollama (lokal + cloud)
-- Endpoint: `$baseUrl/api/chat`
+- Chat: `$baseUrl/api/chat` (NDJSON Streaming)
+- Models: `$baseUrl/api/tags`
 - Lokal: `http://127.0.0.1:11434`, kein API-Key nötig
-- Cloud: `https://ollama.com`, zusätzlich `Authorization: Bearer <apiKey>`
-- Response: `OllamaResponse` mit `message.content`
+- Cloud: `https://ollama.com`, `Authorization: Bearer <apiKey>`
+
+## Streaming-Architektur
+
+```
+AgentViewModel.sendMessage()
+  → aiService.streamMessage() → Flow<AgentResult>
+    → streamOpenAiCompatible() / streamOllama() → Flow<String>
+      → OkHttp SSE / NDJSON Parsing
+      → flowOn(Dispatchers.IO)
+    → Token für Token emit(AgentResult(output=laufenderText))
+  → collect { } updated _messages inkrementell
+  → ChatScreen LaunchedEffect scrollt automatisch
+```
 
 ## Package-Struktur
 ```
@@ -42,51 +69,61 @@ com.agents.app/
 ├── data/
 │   └── ProviderCredentialsRepository.kt
 ├── db/
-│   └── AgentDatabase.kt (+ DAOs)
+│   ├── AgentDao.kt
+│   ├── MessageDao.kt
+│   └── AgentDatabase.kt
 ├── models/
-│   └── AgentModels.kt (Agent, Message, ApiMessage, AgentResult,
-│       OpenAIResponse, OllamaResponse, OllamaModel, ...)
+│   └── AgentModels.kt
 ├── ui/
 │   ├── AgentViewModel.kt
 │   ├── navigation/
 │   │   └── AppNavigation.kt
 │   ├── screens/
+│   │   ├── IntroScreen.kt      (animierter Splash)
+│   │   ├── HomeScreen.kt       (Uhr, letzte Aktivität)
 │   │   ├── AgentListScreen.kt
-│   │   ├── ChatScreen.kt
-│   │   ├── CreateAgentScreen.kt
+│   │   ├── ChatScreen.kt       (Streaming-Auto-Scroll)
+│   │   ├── CreateAgentScreen.kt (Templates + Model-Picker)
 │   │   └── SettingsScreen.kt
 │   └── theme/
+│       ├── Color.kt
+│       ├── Theme.kt            (Dark Theme, Shapes)
+│       └── Type.kt
 ├── AgentRepository.kt
 ├── AgentsApplication.kt
 └── MainActivity.kt
 ```
 
+## Navigation
+```
+IntroScreen (4.2s) → HomeScreen → AgentListScreen → ChatScreen
+                                    ↕                   ↕
+                              CreateAgentScreen    SettingsScreen
+```
+
 ## Provider-Zugangsdaten
 
-Persistiert via Jetpack DataStore (Preferences) in
-`ProviderCredentialsRepository`:
+Persistiert via Jetpack DataStore (Preferences):
 
 - `openrouter_api_key`
 - `opencode_zen_api_key`
 - `ollama_base_url` (Default: `https://ollama.com`)
 - `ollama_api_key` (optional, nur für Ollama-Cloud)
 
-`AgentViewModel` stellt `credentials: StateFlow<ProviderCredentials>`
-bereit. `sendMessage()` liest pro `agent.provider` den passenden Wert
-aus `credentials.value`.
+## Theme
 
-## Conversation History
-
-`AgentRepository.chat()` lädt `getMessagesByAgent()` und baut die
-volle Nachrichtenliste (system + history + user) auf, bevor der
-Provider aufgerufen wird.
+Dark Mode erzwungen (`darkTheme = true, dynamicColor = false`):
+- Primary: `#BB86FC` (Violett)
+- Secondary: `#03DAC6` (Tuerkis)
+- Background: `#0D0D0D`
+- Surface: `#1A1A1A`
+- Shapes: 8-32dp abgerundet
 
 ## Non-Goals für v1
 - Tool-Calling / Function-Calling
 - Mehrere Agenten gleichzeitig / Orchestrierung
 - On-Device-Inferenz
 - RAG
-- Streaming-Antworten
 
 ## Versionierung
 Diese Datei wird zuerst geändert, dann der Code – nicht umgekehrt.
