@@ -14,3 +14,4 @@ local.properties
 *.jks
 *.keystore
 google-services.json
+opencode.local.json
