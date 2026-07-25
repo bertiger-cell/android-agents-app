@@ -235,6 +235,7 @@ fun CreateAgentScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OllamaModelPicker(
     model: String,
@@ -294,6 +295,7 @@ private fun OllamaModelPicker(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OpenAICompatibleModelPicker(
     model: String,
@@ -331,9 +333,9 @@ private fun OpenAICompatibleModelPicker(
                         text = {
                             Column {
                                 Text(displayName)
-                                if (openAIModel.description.isNotBlank()) {
+                                if (!openAIModel.description.isNullOrBlank()) {
                                     Text(
-                                        openAIModel.description.take(80),
+                                        openAIModel.description?.take(80) ?: "",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
