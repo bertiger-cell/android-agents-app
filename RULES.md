@@ -63,3 +63,35 @@ Nicht tun: Keine der drei Provider-Implementierungen anlegen, keine
 - Prüfen: steht eine Behauptung im Output, die nicht stimmen kann (z.B.
   "getestet", obwohl kein Build/Test lief)?
 - Erst danach: Commit mit Message, die erklärt was und warum
+
+## Ergänzende Regeln (nach Lernerfahrung mit Mehrfach-Datei-Commits)
+
+8. **Build-Verifikation nach JEDER einzelnen Änderung, nicht gesammelt
+   am Ende.** Nach jeder Datei, die geändert wird: `./gradlew
+   assembleDebug` (oder `compileDebugKotlin` für schnellere Zwischen-
+   checks) tatsächlich ausführen und das Ergebnis zeigen, BEVOR die
+   nächste Änderung beginnt. Ein Commit mit der Message "fix: Build-
+   Fehler" direkt nach mehreren Feature-Commits ist ein Zeichen dafür,
+   dass diese Regel übersprungen wurde – genau das soll sie verhindern.
+
+9. **Harte Datei-Scope-Grenze: max. 2 Dateien pro Aufgabe ohne
+   Rückfrage.** Erfordert eine Änderung mehr als 2 Dateien (z.B. ein
+   Cleanup, der Gradle, Manifest, Models und Theme gleichzeitig
+   betrifft): zuerst die vollständige Dateiliste + kurze Begründung
+   pro Datei zeigen, auf Bestätigung warten, danach in der gezeigten
+   Reihenfolge EINZELN abarbeiten und nach jeder Datei bauen (siehe
+   Regel 8). Nicht "im Rutsch" mehrere unabhängige Cleanups (Gradle-
+   Dependency entfernen + Manifest-Permission entfernen + Theme-Fix)
+   in einem Commit bündeln, auch wenn sie thematisch alle "Cleanup"
+   heißen.
+
+10. **Keine neuen Architektur-Komponenten ohne vorherige
+    ARCHITECTURE.md-Ergänzung.** Ein neuer Android-Service, Receiver,
+    eine neue Permission, eine neue Library-Dependency oder ein neuer
+    Ordner mit eigenständiger Verantwortung (wie z.B. ein
+    `automation/`-Paket mit ForegroundService + BootReceiver) wird
+    zuerst als Abschnitt in ARCHITECTURE.md skizziert (Zweck, warum
+    nötig, welche Permissions das erfordert) – erst nach Freigabe
+    wird Code dafür geschrieben. Skeleton-Code "for later" ohne
+    Architektur-Eintrag zählt als Verstoß gegen diese Regel, auch wenn
+    er (noch) nirgends verdrahtet ist.
