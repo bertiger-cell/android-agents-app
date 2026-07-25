@@ -274,7 +274,7 @@ class AIProviderService {
             val requestBody = mapOf(
                 "model" to model,
                 "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
-                "options" to mapOf("temperature" to temperature),
+                "options" to mapOf("temperature" to temperature, "num_ctx" to 2048, "num_thread" to 4),
                 "stream" to false,
                 "keep_alive" to keepAlive
             )
