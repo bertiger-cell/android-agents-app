@@ -39,9 +39,6 @@ Zentraler Service statt Interface pro Provider – bewusst so für v1:
 com.agents.app/
 ├── ai/
 │   └── AIProviderService.kt
-├── automation/
-│   ├── AgentForegroundService.kt   (Skeleton für v2)
-│   └── BootReceiver.kt             (Skeleton für v2)
 ├── data/
 │   └── ProviderCredentialsRepository.kt
 ├── db/
