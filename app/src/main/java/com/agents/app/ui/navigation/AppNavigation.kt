@@ -2,9 +2,7 @@ package com.agents.app.ui.navigation
 
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavType
 import androidx.navigation.compose.*
-import androidx.navigation.navArgument
 import com.agents.app.models.AIProvider
 import com.agents.app.ui.AgentViewModel
 import com.agents.app.ui.screens.*
@@ -17,6 +15,10 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val credentials by viewModel.credentials.collectAsState()
+    val ollamaTestMessage by viewModel.ollamaTestMessage.collectAsState()
+    val isOllamaTesting by viewModel.isOllamaTesting.collectAsState()
+    val ollamaWarmupMessage by viewModel.ollamaWarmupMessage.collectAsState()
+    val isOllamaWarmingUp by viewModel.isOllamaWarmingUp.collectAsState()
     val ollamaModels = remember(agents) {
         agents
             .asSequence()
@@ -86,10 +88,20 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
             SettingsScreen(
                 credentials = credentials,
                 ollamaModels = ollamaModels,
+                ollamaTestMessage = ollamaTestMessage,
+                isOllamaTesting = isOllamaTesting,
+                ollamaWarmupMessage = ollamaWarmupMessage,
+                isOllamaWarmingUp = isOllamaWarmingUp,
                 onUpdateOpenRouterKey = { viewModel.updateOpenRouterKey(it) },
                 onUpdateZenKey = { viewModel.updateZenKey(it) },
                 onUpdateOllamaBaseUrl = { viewModel.updateOllamaBaseUrl(it) },
                 onUpdateOllamaApiKey = { viewModel.updateOllamaApiKey(it) },
+                onTestOllamaConnection = { baseUrl, apiKey ->
+                    viewModel.testOllamaConnection(baseUrl, apiKey)
+                },
+                onWarmUpOllamaModels = { baseUrl, apiKey, models ->
+                    viewModel.warmUpOllamaModels(baseUrl, apiKey, models)
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }

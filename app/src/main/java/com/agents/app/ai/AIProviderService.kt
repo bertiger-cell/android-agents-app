@@ -12,9 +12,10 @@ import java.util.concurrent.TimeUnit
 
 class AIProviderService {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(60, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(5, TimeUnit.MINUTES)
         .writeTimeout(60, TimeUnit.SECONDS)
+        .callTimeout(6, TimeUnit.MINUTES)
         .build()
 
     private val gson = Gson()
@@ -142,6 +143,7 @@ class AIProviderService {
         try {
             val requestBody = mapOf(
                 "model" to model,
+                "prompt" to "",
                 "keep_alive" to keepAlive,
                 "stream" to false
             )

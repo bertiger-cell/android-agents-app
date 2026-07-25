@@ -13,26 +13,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.agents.app.ai.AIProviderService
 import com.agents.app.data.ProviderCredentials
-import com.agents.app.models.OllamaConnectionResult
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     credentials: ProviderCredentials,
     ollamaModels: List<String>,
+    ollamaTestMessage: String?,
+    isOllamaTesting: Boolean,
+    ollamaWarmupMessage: String?,
+    isOllamaWarmingUp: Boolean,
     onUpdateOpenRouterKey: (String) -> Unit,
     onUpdateZenKey: (String) -> Unit,
     onUpdateOllamaBaseUrl: (String) -> Unit,
     onUpdateOllamaApiKey: (String) -> Unit,
+    onTestOllamaConnection: (String, String) -> Unit,
+    onWarmUpOllamaModels: (String, String, List<String>) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val providerService = remember { AIProviderService() }
-    val coroutineScope = rememberCoroutineScope()
-
     var showOpenRouterKey by remember { mutableStateOf(false) }
     var showZenKey by remember { mutableStateOf(false) }
     var showOllamaKey by remember { mutableStateOf(false) }
@@ -40,10 +40,13 @@ fun SettingsScreen(
     var zenKey by remember { mutableStateOf(credentials.zenKey) }
     var ollamaBaseUrl by remember { mutableStateOf(credentials.ollamaBaseUrl) }
     var ollamaApiKey by remember { mutableStateOf(credentials.ollamaApiKey) }
-    var ollamaTestMessage by remember { mutableStateOf<String?>(null) }
-    var ollamaTestInProgress by remember { mutableStateOf(false) }
-    var ollamaWarmupMessage by remember { mutableStateOf<String?>(null) }
-    var ollamaWarmupInProgress by remember { mutableStateOf(false) }
+
+    LaunchedEffect(credentials) {
+        openRouterKey = credentials.openRouterKey
+        zenKey = credentials.zenKey
+        ollamaBaseUrl = credentials.ollamaBaseUrl
+        ollamaApiKey = credentials.ollamaApiKey
+    }
 
     Scaffold(
         topBar = {
@@ -127,28 +130,12 @@ fun SettingsScreen(
             ) {
                 OutlinedButton(
                     onClick = {
-                        ollamaTestInProgress = true
-                        ollamaTestMessage = null
-                        coroutineScope.launch {
-                            val result = try {
-                                providerService.testOllamaConnection(
-                                    baseUrl = ollamaBaseUrl,
-                                    apiKey = ollamaApiKey
-                                )
-                            } catch (throwable: Exception) {
-                                OllamaConnectionResult(
-                                    success = false,
-                                    message = throwable.message ?: "Unbekannter Fehler"
-                                )
-                            }
-                            ollamaTestInProgress = false
-                            ollamaTestMessage = result.message
-                        }
+                        onTestOllamaConnection(ollamaBaseUrl, ollamaApiKey)
                     },
                     modifier = Modifier.weight(1f),
-                    enabled = !ollamaTestInProgress
+                    enabled = !isOllamaTesting
                 ) {
-                    Text(if (ollamaTestInProgress) "Test..." else "Test Connection")
+                    Text(if (isOllamaTesting) "Test..." else "Test Connection")
                 }
                 if (ollamaTestMessage != null) {
                     Text(
@@ -164,40 +151,14 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             OutlinedButton(
-                    onClick = {
-                        ollamaWarmupInProgress = true
-                        ollamaWarmupMessage = null
-                        coroutineScope.launch {
-                            val uniqueModels = ollamaModels.filter { it.isNotBlank() }.distinct()
-                            val results = uniqueModels.map { model ->
-                                try {
-                                    providerService.warmUpOllama(
-                                        baseUrl = ollamaBaseUrl,
-                                        apiKey = ollamaApiKey,
-                                        model = model
-                                    )
-                                } catch (throwable: Exception) {
-                                    OllamaConnectionResult(
-                                        success = false,
-                                        message = "${model}: ${throwable.message ?: "Unbekannter Fehler"}"
-                                    )
-                                }
-                            }
-                            ollamaWarmupInProgress = false
-                            ollamaWarmupMessage = if (results.isEmpty()) {
-                                "No Ollama models configured yet."
-                        } else {
-                            results.joinToString("\n") { result ->
-                                result.message
-                            }
-                        }
-                    }
+                onClick = {
+                    onWarmUpOllamaModels(ollamaBaseUrl, ollamaApiKey, ollamaModels)
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !ollamaWarmupInProgress && ollamaModels.any { it.isNotBlank() }
+                enabled = !isOllamaWarmingUp && ollamaModels.any { it.isNotBlank() }
             ) {
                 Text(
-                    if (ollamaWarmupInProgress) {
+                    if (isOllamaWarmingUp) {
                         "Warming up..."
                     } else {
                         "Warm up Ollama models (${ollamaModels.count { it.isNotBlank() }})"

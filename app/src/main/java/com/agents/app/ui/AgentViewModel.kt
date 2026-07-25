@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agents.app.AgentRepository
 import com.agents.app.AgentsApplication
+import com.agents.app.ai.AIProviderService
 import com.agents.app.data.ProviderCredentials
 import com.agents.app.data.ProviderCredentialsRepository
 import com.agents.app.models.*
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AgentRepository
     private val credentialsRepository = ProviderCredentialsRepository(application)
+    private val aiService = AIProviderService()
     private var messagesJob: Job? = null
 
     private val _agents = MutableStateFlow<List<Agent>>(emptyList())
@@ -28,6 +30,18 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _ollamaTestMessage = MutableStateFlow<String?>(null)
+    val ollamaTestMessage: StateFlow<String?> = _ollamaTestMessage.asStateFlow()
+
+    private val _isOllamaTesting = MutableStateFlow(false)
+    val isOllamaTesting: StateFlow<Boolean> = _isOllamaTesting.asStateFlow()
+
+    private val _ollamaWarmupMessage = MutableStateFlow<String?>(null)
+    val ollamaWarmupMessage: StateFlow<String?> = _ollamaWarmupMessage.asStateFlow()
+
+    private val _isOllamaWarmingUp = MutableStateFlow(false)
+    val isOllamaWarmingUp: StateFlow<Boolean> = _isOllamaWarmingUp.asStateFlow()
 
     val credentials: StateFlow<ProviderCredentials> =
         credentialsRepository.credentials.stateIn(
@@ -129,6 +143,53 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateOllamaApiKey(key: String) {
         viewModelScope.launch { credentialsRepository.updateOllamaApiKey(key) }
+    }
+
+    fun testOllamaConnection(baseUrl: String, apiKey: String) {
+        viewModelScope.launch {
+            _isOllamaTesting.value = true
+            _ollamaTestMessage.value = null
+
+            try {
+                val result = aiService.testOllamaConnection(
+                    baseUrl = baseUrl,
+                    apiKey = apiKey
+                )
+                _ollamaTestMessage.value = result.message
+            } catch (e: Exception) {
+                _ollamaTestMessage.value = e.message ?: "Unbekannter Fehler"
+            } finally {
+                _isOllamaTesting.value = false
+            }
+        }
+    }
+
+    fun warmUpOllamaModels(baseUrl: String, apiKey: String, models: List<String>) {
+        viewModelScope.launch {
+            _isOllamaWarmingUp.value = true
+            _ollamaWarmupMessage.value = null
+
+            try {
+                val uniqueModels = models.filter { it.isNotBlank() }.distinct()
+                val results = uniqueModels.map { model ->
+                    aiService.warmUpOllama(
+                        baseUrl = baseUrl,
+                        apiKey = apiKey,
+                        model = model
+                    )
+                }
+
+                _ollamaWarmupMessage.value = if (results.isEmpty()) {
+                    "No Ollama models configured yet."
+                } else {
+                    results.joinToString("\n") { result -> result.message }
+                }
+            } catch (e: Exception) {
+                _ollamaWarmupMessage.value = e.message ?: "Unbekannter Fehler"
+            } finally {
+                _isOllamaWarmingUp.value = false
+            }
+        }
     }
 
     fun clearChat() {
