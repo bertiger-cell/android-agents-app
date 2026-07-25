@@ -1,5 +1,7 @@
 package com.agents.app.ui.navigation
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.*
@@ -21,7 +23,24 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val availableOpenRouterModels by viewModel.availableOpenRouterModels.collectAsState()
     val availableZenModels by viewModel.availableZenModels.collectAsState()
 
-    NavHost(navController = navController, startDestination = "home") {
+    NavHost(
+        navController = navController,
+        startDestination = "intro",
+        enterTransition = { fadeIn(tween(400)) + slideInHorizontally(tween(400)) { it / 4 } },
+        exitTransition = { fadeOut(tween(300)) },
+        popEnterTransition = { fadeIn(tween(400)) + slideInHorizontally(tween(400)) { -it / 4 } },
+        popExitTransition = { fadeOut(tween(300)) }
+    ) {
+        composable("intro") {
+            IntroScreen(
+                onFinished = {
+                    navController.navigate("home") {
+                        popUpTo("intro") { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable("home") {
             HomeScreen(
                 agents = agents,
