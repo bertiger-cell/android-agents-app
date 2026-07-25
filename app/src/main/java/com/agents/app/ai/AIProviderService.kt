@@ -355,7 +355,7 @@ class AIProviderService {
                 executionTimeMs = System.currentTimeMillis() - startTime
             ))
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     // --- Streaming variants (V2) ---
 
@@ -422,7 +422,7 @@ class AIProviderService {
         } finally {
             response.body?.close()
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     fun streamOllama(
         apiKey: String,
@@ -484,7 +484,7 @@ class AIProviderService {
         } finally {
             response.body?.close()
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     private fun buildOllamaUrl(baseUrl: String, path: String): String {
         val normalizedBaseUrl = baseUrl.trim().trimEnd('/').removeSuffix("/api")
