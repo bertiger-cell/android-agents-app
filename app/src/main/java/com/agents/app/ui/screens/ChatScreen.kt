@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Send
@@ -124,7 +125,11 @@ fun ChatScreen(
                     onValueChange = { inputText = it },
                     label = { Text("Type a message...") },
                     modifier = Modifier.weight(1f),
-                    enabled = !isLoading
+                    enabled = !isLoading,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                    )
                 )
                 IconButton(
                     onClick = {
@@ -156,13 +161,18 @@ fun MessageBubble(message: Message) {
     ) {
         Surface(
             modifier = Modifier.widthIn(max = 300.dp),
-            shape = MaterialTheme.shapes.medium,
+            shape = RoundedCornerShape(
+                topStart = 16.dp,
+                topEnd = 16.dp,
+                bottomStart = if (isUser) 16.dp else 4.dp,
+                bottomEnd = if (isUser) 4.dp else 16.dp
+            ),
             color = if (isUser) {
                 MaterialTheme.colorScheme.primary
             } else {
-                MaterialTheme.colorScheme.surfaceVariant
+                MaterialTheme.colorScheme.secondaryContainer
             },
-            tonalElevation = 2.dp
+            tonalElevation = if (isUser) 0.dp else 2.dp
         ) {
             Column(
                 modifier = Modifier.padding(12.dp)
@@ -172,7 +182,7 @@ fun MessageBubble(message: Message) {
                     color = if (isUser) {
                         MaterialTheme.colorScheme.onPrimary
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        MaterialTheme.colorScheme.onSecondaryContainer
                     }
                 )
                 if (message.tokenCount > 0) {
@@ -183,7 +193,7 @@ fun MessageBubble(message: Message) {
                         color = if (isUser) {
                             MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
                         } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                         }
                     )
                 }
