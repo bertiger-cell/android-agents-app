@@ -1,16 +1,56 @@
 package com.agents.app
 
+import android.content.Context
 import com.agents.app.db.AgentDatabase
 import com.agents.app.models.*
 import kotlinx.coroutines.flow.Flow
+import java.io.File
+import java.util.UUID
 
-class AgentRepository(private val database: AgentDatabase) {
+class AgentRepository(
+    private val database: AgentDatabase,
+    private val context: Context
+) {
     private val agentDao = database.agentDao()
     private val messageDao = database.messageDao()
     private val projectDao = database.projectDao()
     private val chatSessionDao = database.chatSessionDao()
 
-    // Agent operations
+    // --- Project operations ---
+
+    fun getAllProjects(): Flow<List<ProjectEntity>> = projectDao.getAllProjects()
+
+    suspend fun getProjectById(projectId: String): ProjectEntity? =
+        projectDao.getProjectById(projectId)
+
+    suspend fun createProject(name: String, description: String = ""): ProjectEntity {
+        val projectId = UUID.randomUUID().toString()
+        val timestamp = System.currentTimeMillis()
+
+        val folderPath = context.filesDir.path + "/projects/${name}_$projectId"
+        File(folderPath).mkdirs()
+
+        val projectEntity = ProjectEntity(
+            id = projectId,
+            name = name,
+            description = description,
+            createdAt = timestamp,
+            updatedAt = timestamp,
+            folderPath = folderPath,
+            color = "#6200EE",
+            tags = "[]"
+        )
+
+        projectDao.insertProject(projectEntity)
+        return projectEntity
+    }
+
+    suspend fun updateProject(project: ProjectEntity) = projectDao.updateProject(project)
+
+    suspend fun deleteProject(projectId: String) = projectDao.deleteProjectById(projectId)
+
+    // --- Agent operations ---
+
     fun getAllAgents(): Flow<List<Agent>> = agentDao.getAllAgents()
 
     fun getAgentsByProject(projectId: String): Flow<List<Agent>> =
@@ -18,7 +58,28 @@ class AgentRepository(private val database: AgentDatabase) {
 
     suspend fun getAgentById(agentId: String): Agent? = agentDao.getAgentById(agentId)
 
-    suspend fun createAgent(agent: Agent) = agentDao.insertAgent(agent)
+    suspend fun createAgent(
+        projectId: String,
+        name: String,
+        description: String,
+        provider: AIProvider,
+        systemPrompt: String,
+        model: String,
+        temperature: Float
+    ) {
+        val agent = Agent(
+            id = UUID.randomUUID().toString(),
+            projectId = projectId,
+            name = name,
+            description = description,
+            provider = provider,
+            model = model,
+            systemPrompt = systemPrompt,
+            temperature = temperature,
+            maxTokens = 4096
+        )
+        agentDao.insertAgent(agent)
+    }
 
     suspend fun updateAgent(agent: Agent) = agentDao.updateAgent(agent)
 
@@ -26,7 +87,8 @@ class AgentRepository(private val database: AgentDatabase) {
 
     suspend fun deleteAgentById(agentId: String) = agentDao.deleteAgentById(agentId)
 
-    // Message operations
+    // --- Message operations ---
+
     fun getMessagesBySession(sessionId: String): Flow<List<Message>> =
         messageDao.getMessagesBySession(sessionId)
 
@@ -35,19 +97,8 @@ class AgentRepository(private val database: AgentDatabase) {
     suspend fun deleteMessagesBySession(sessionId: String) =
         messageDao.deleteMessagesBySession(sessionId)
 
-    // Project operations
-    fun getAllProjects(): Flow<List<ProjectEntity>> = projectDao.getAllProjects()
+    // --- ChatSession operations ---
 
-    suspend fun getProjectById(projectId: String): ProjectEntity? =
-        projectDao.getProjectById(projectId)
-
-    suspend fun createProject(project: ProjectEntity) = projectDao.insertProject(project)
-
-    suspend fun updateProject(project: ProjectEntity) = projectDao.updateProject(project)
-
-    suspend fun deleteProject(project: ProjectEntity) = projectDao.deleteProject(project)
-
-    // ChatSession operations
     fun getSessionsByProject(projectId: String): Flow<List<ChatSessionEntity>> =
         chatSessionDao.getSessionsByProject(projectId)
 

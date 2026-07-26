@@ -59,7 +59,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val app = application as AgentsApplication
-        repository = AgentRepository(app.database)
+        repository = AgentRepository(app.database, app)
 
         viewModelScope.launch {
             repository.getAllAgents().collect { agentList ->
@@ -76,7 +76,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
         if (agent != null) {
             viewModelScope.launch {
-                // Find or create a session for this agent
                 var session = repository.getLatestSessionForAgent(agent.id)
                 if (session == null) {
                     session = ChatSessionEntity(
@@ -88,7 +87,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 _currentSession.value = session
 
-                // Load messages for this session
                 messagesJob = viewModelScope.launch {
                     repository.getMessagesBySession(session.id).collect { msgs ->
                         _messages.value = msgs
@@ -107,9 +105,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         temperature: Float
     ) {
         viewModelScope.launch {
-            // Use a default project ID for now
             val defaultProjectId = "default-project"
-            val agent = Agent(
+            repository.createAgent(
                 projectId = defaultProjectId,
                 name = name,
                 description = description,
@@ -118,7 +115,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 model = model,
                 temperature = temperature
             )
-            repository.createAgent(agent)
         }
     }
 
