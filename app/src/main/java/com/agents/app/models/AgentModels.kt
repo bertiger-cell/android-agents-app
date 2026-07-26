@@ -135,3 +135,25 @@ data class OllamaMessage(
     val role: String?,
     val content: String?
 )
+
+// V3 Projects Layer
+data class Project(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val description: String = "",
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val folderPath: String,  // Internal: /data/data/.../files/projects/ProjectName_id
+    val color: String = "#6200EE",
+    val tags: List<String> = emptyList()
+)
+
+data class ChatSession(
+    val id: String = UUID.randomUUID().toString(),
+    val projectId: String,
+    val agentId: String,
+    val title: String = "Chat ${System.currentTimeMillis()}",
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isArchived: Boolean = false
+)
