@@ -27,6 +27,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedAgent = MutableStateFlow<Agent?>(null)
     val selectedAgent: StateFlow<Agent?> = _selectedAgent.asStateFlow()
 
+    private val _currentSession = MutableStateFlow<ChatSessionEntity?>(null)
+
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages.asStateFlow()
 
@@ -69,14 +71,30 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     fun selectAgent(agent: Agent?) {
         messagesJob?.cancel()
         _selectedAgent.value = agent
+        _currentSession.value = null
+        _messages.value = emptyList()
+
         if (agent != null) {
-            messagesJob = viewModelScope.launch {
-                repository.getMessagesByAgent(agent.id).collect { messages ->
-                    _messages.value = messages
+            viewModelScope.launch {
+                // Find or create a session for this agent
+                var session = repository.getLatestSessionForAgent(agent.id)
+                if (session == null) {
+                    session = ChatSessionEntity(
+                        projectId = agent.projectId,
+                        agentId = agent.id,
+                        title = "Chat with ${agent.name}"
+                    )
+                    repository.createSession(session)
+                }
+                _currentSession.value = session
+
+                // Load messages for this session
+                messagesJob = viewModelScope.launch {
+                    repository.getMessagesBySession(session.id).collect { msgs ->
+                        _messages.value = msgs
+                    }
                 }
             }
-        } else {
-            _messages.value = emptyList()
         }
     }
 
@@ -89,7 +107,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         temperature: Float
     ) {
         viewModelScope.launch {
+            // Use a default project ID for now
+            val defaultProjectId = "default-project"
             val agent = Agent(
+                projectId = defaultProjectId,
                 name = name,
                 description = description,
                 provider = provider,
@@ -106,12 +127,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             repository.deleteAgent(agent)
             if (_selectedAgent.value?.id == agent.id) {
                 _selectedAgent.value = null
+                _currentSession.value = null
             }
         }
     }
 
     fun sendMessage(content: String) {
         val agent = _selectedAgent.value ?: return
+        val session = _currentSession.value ?: return
         if (content.isBlank()) return
 
         viewModelScope.launch {
@@ -127,7 +150,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
                 if (apiKey.isBlank() && agent.provider != AIProvider.OLLAMA) {
                     val errorMsg = Message(
-                        agentId = agent.id,
+                        sessionId = session.id,
                         role = MessageRole.ASSISTANT,
                         content = "Fehler: Kein API-Key fuer ${agent.provider.name} konfiguriert. Bitte in den Einstellungen hinterlegen."
                     )
@@ -136,14 +159,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     return@launch
                 }
 
-                val history = repository.getMessagesByAgent(agent.id).first()
+                val history = repository.getMessagesBySession(session.id).first()
                 val messages = mutableListOf<ApiMessage>()
                 messages.add(ApiMessage(role = "system", content = agent.systemPrompt))
                 messages.addAll(history.map { ApiMessage(role = it.role.name.lowercase(), content = it.content) })
                 messages.add(ApiMessage(role = "user", content = content))
 
                 repository.addMessage(
-                    Message(agentId = agent.id, role = MessageRole.USER, content = content)
+                    Message(sessionId = session.id, role = MessageRole.USER, content = content)
                 )
 
                 val streamingMessageId = java.util.UUID.randomUUID().toString()
@@ -162,7 +185,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                         finalOutput = result.output
                         val streamingMsg = Message(
                             id = streamingMessageId,
-                            agentId = agent.id,
+                            sessionId = session.id,
                             role = MessageRole.ASSISTANT,
                             content = result.output,
                             tokenCount = result.tokensUsed
@@ -176,11 +199,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         _messages.value = currentMessages
                     } else {
-                        // Streaming-Fehler: Fehlermeldung in Chat anzeigen
                         val errorText = result.error ?: "Unbekannter Fehler"
                         Log.e("AgentViewModel", "Streaming error: $errorText")
                         val errorMsg = Message(
-                            agentId = agent.id,
+                            sessionId = session.id,
                             role = MessageRole.ASSISTANT,
                             content = "Fehler: $errorText"
                         )
@@ -198,7 +220,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 if (finalOutput.isNotBlank()) {
                     repository.addMessage(
                         Message(
-                            agentId = agent.id,
+                            sessionId = session.id,
                             role = MessageRole.ASSISTANT,
                             content = finalOutput,
                             tokenCount = finalOutput.split("\\s+".toRegex()).size
@@ -210,7 +232,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: Exception) {
                 Log.e("AgentViewModel", "sendMessage failed", e)
                 val errorMsg = Message(
-                    agentId = agent.id,
+                    sessionId = session.id,
                     role = MessageRole.ASSISTANT,
                     content = "Fehler: ${e.message ?: "Unbekannter Fehler"}"
                 )
@@ -285,9 +307,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearChat() {
-        val agent = _selectedAgent.value ?: return
+        val session = _currentSession.value ?: return
         viewModelScope.launch {
-            repository.clearMessages(agent.id)
+            repository.deleteMessagesBySession(session.id)
         }
     }
 }
