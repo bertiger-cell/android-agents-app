@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agents.app.models.Agent
-import com.agents.app.models.AgentType
 import com.agents.app.models.AIProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -131,14 +130,6 @@ fun AgentCard(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AssistChip(
-                        onClick = {},
-                        label = { Text(agent.type.name) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            labelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    )
                     AssistChip(
                         onClick = {},
                         label = { Text(agent.provider.name) },

@@ -95,8 +95,8 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 openRouterApiKey = credentials.openRouterKey,
                 zenApiKey = credentials.zenKey,
                 onNavigateBack = { navController.popBackStack() },
-                onCreateAgent = { name, description, type, provider, systemPrompt, model, temperature ->
-                    viewModel.createAgent(name, description, type, provider, systemPrompt, model, temperature)
+                onCreateAgent = { name, description, provider, systemPrompt, model, temperature ->
+                    viewModel.createAgent(name, description, provider, systemPrompt, model, temperature)
                 }
             )
         }

@@ -10,7 +10,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agents.app.models.AIProvider
-import com.agents.app.models.AgentType
 import com.agents.app.models.OllamaModel
 import com.agents.app.models.OpenAIModel
 
@@ -83,7 +82,6 @@ fun CreateAgentScreen(
     onCreateAgent: (
         name: String,
         description: String,
-        type: AgentType,
         provider: AIProvider,
         systemPrompt: String,
         model: String,
@@ -95,12 +93,10 @@ fun CreateAgentScreen(
     var systemPrompt by remember { mutableStateOf("You are a helpful AI assistant.") }
     var model by remember { mutableStateOf("gpt-4") }
     var temperature by remember { mutableStateOf(0.7f) }
-    var selectedType by remember { mutableStateOf(AgentType.GENERAL) }
     var selectedProvider by remember { mutableStateOf(AIProvider.OPENROUTER) }
     var selectedTemplate by remember { mutableStateOf<AgentTemplate?>(null) }
 
     val templates = remember { getDefaultTemplates() }
-    val agentTypes = AgentType.entries
     val aiProviders = AIProvider.entries
 
     // Prefill fields when template is selected
@@ -195,38 +191,6 @@ fun CreateAgentScreen(
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2
             )
-
-            // Agent Type Dropdown
-            var typeExpanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(
-                expanded = typeExpanded,
-                onExpandedChange = { typeExpanded = !typeExpanded }
-            ) {
-                OutlinedTextField(
-                    value = selectedType.name,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Agent Type") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                )
-                ExposedDropdownMenu(
-                    expanded = typeExpanded,
-                    onDismissRequest = { typeExpanded = false }
-                ) {
-                    agentTypes.forEach { type ->
-                        DropdownMenuItem(
-                            text = { Text(type.name) },
-                            onClick = {
-                                selectedType = type
-                                typeExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
 
             // Provider Dropdown
             var providerExpanded by remember { mutableStateOf(false) }
@@ -327,7 +291,6 @@ fun CreateAgentScreen(
                     onCreateAgent(
                         name,
                         description,
-                        selectedType,
                         selectedProvider,
                         systemPrompt,
                         model,

@@ -85,7 +85,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     fun createAgent(
         name: String,
         description: String,
-        type: AgentType,
         provider: AIProvider,
         systemPrompt: String,
         model: String,
@@ -95,7 +94,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             val agent = Agent(
                 name = name,
                 description = description,
-                type = type,
                 provider = provider,
                 systemPrompt = systemPrompt,
                 model = model,

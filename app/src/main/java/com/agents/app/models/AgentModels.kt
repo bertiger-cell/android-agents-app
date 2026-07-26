@@ -11,16 +11,6 @@ enum class AIProvider {
     ZEN
 }
 
-// Agent Types for Specialized Agents
-enum class AgentType {
-    GENERAL,
-    RESEARCHER,
-    CODER,
-    WRITER,
-    AUTOMATOR,
-    CUSTOM
-}
-
 // Base Agent Configuration
 @Entity(tableName = "agents")
 data class Agent(
@@ -28,7 +18,6 @@ data class Agent(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
     val description: String,
-    val type: AgentType = AgentType.GENERAL,
     val provider: AIProvider = AIProvider.OPENROUTER,
     val systemPrompt: String = "You are a helpful AI assistant.",
     val model: String = "gpt-4",
