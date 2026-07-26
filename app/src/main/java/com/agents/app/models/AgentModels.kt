@@ -16,15 +16,14 @@ enum class AIProvider {
 data class Agent(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
+    val projectId: String,
     val name: String,
-    val description: String,
+    val description: String = "",
     val provider: AIProvider = AIProvider.OPENROUTER,
-    val systemPrompt: String = "You are a helpful AI assistant.",
     val model: String = "gpt-4",
-    val maxTokens: Int = 4096,
+    val systemPrompt: String = "You are a helpful AI assistant.",
     val temperature: Float = 0.7f,
-    val isActive: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis(),
+    val maxTokens: Int = 4096,
     val lastRunAt: Long? = null
 )
 
@@ -33,11 +32,12 @@ data class Agent(
 data class Message(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
-    val agentId: String,
+    val sessionId: String,
     val role: MessageRole,
     val content: String,
-    val timestamp: Long = System.currentTimeMillis(),
-    val tokenCount: Int = 0
+    val isInternalThought: Boolean = false,
+    val tokenCount: Int = 0,
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 enum class MessageRole {
@@ -143,7 +143,7 @@ data class Project(
     val description: String = "",
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val folderPath: String,  // Internal: /data/data/.../files/projects/ProjectName_id
+    val folderPath: String,
     val color: String = "#6200EE",
     val tags: List<String> = emptyList()
 )
