@@ -18,6 +18,9 @@ interface ChatSessionDao {
     @Query("SELECT * FROM chat_sessions WHERE projectId = :projectId AND isArchived = 0 ORDER BY updatedAt DESC")
     fun getSessionsByProject(projectId: String): Flow<List<ChatSessionEntity>>
 
+    @Query("SELECT * FROM chat_sessions WHERE agentId = :agentId AND isArchived = 0 ORDER BY updatedAt DESC")
+    fun getSessionsByAgent(agentId: String): Flow<List<ChatSessionEntity>>
+
     @Query("SELECT * FROM chat_sessions WHERE id = :sessionId")
     suspend fun getSessionById(sessionId: String): ChatSessionEntity?
 
