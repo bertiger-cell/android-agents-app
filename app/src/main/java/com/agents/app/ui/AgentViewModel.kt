@@ -1,6 +1,7 @@
 package com.agents.app.ui
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agents.app.AgentRepository
@@ -38,15 +39,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val _isOllamaTesting = MutableStateFlow(false)
     val isOllamaTesting: StateFlow<Boolean> = _isOllamaTesting.asStateFlow()
 
-    // Ollama models
     private val _availableOllamaModels = MutableStateFlow<List<OllamaModel>>(emptyList())
     val availableOllamaModels: StateFlow<List<OllamaModel>> = _availableOllamaModels.asStateFlow()
 
-    // OpenRouter models
     private val _availableOpenRouterModels = MutableStateFlow<List<OpenAIModel>>(emptyList())
     val availableOpenRouterModels: StateFlow<List<OpenAIModel>> = _availableOpenRouterModels.asStateFlow()
 
-    // Zen models
     private val _availableZenModels = MutableStateFlow<List<OpenAIModel>>(emptyList())
     val availableZenModels: StateFlow<List<OpenAIModel>> = _availableZenModels.asStateFlow()
 
@@ -118,69 +116,109 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             _isLoading.value = true
-            val creds = credentials.value
-            val (apiKey, baseUrl) = when (agent.provider) {
-                AIProvider.OPENROUTER -> creds.openRouterKey to ""
-                AIProvider.ZEN -> creds.zenKey to ""
-                AIProvider.OLLAMA -> creds.ollamaApiKey to creds.ollamaBaseUrl
-            }
 
-            // Build message list with history
-            val history = repository.getMessagesByAgent(agent.id).first()
-            val messages = mutableListOf<ApiMessage>()
-            messages.add(ApiMessage(role = "system", content = agent.systemPrompt))
-            messages.addAll(history.map { ApiMessage(role = it.role.name.lowercase(), content = it.content) })
-            messages.add(ApiMessage(role = "user", content = content))
-
-            // Save user message to DB
-            repository.addMessage(
-                Message(agentId = agent.id, role = MessageRole.USER, content = content)
-            )
-
-            // Stream response
-            val streamingMessageId = java.util.UUID.randomUUID().toString()
-            var finalOutput = ""
-
-            aiService.streamMessage(
-                provider = agent.provider,
-                apiKey = apiKey,
-                baseUrl = baseUrl,
-                model = agent.model,
-                messages = messages,
-                maxTokens = agent.maxTokens,
-                temperature = agent.temperature
-            ).collect { result ->
-                finalOutput = result.output
-                // Update streaming message in the list
-                val streamingMsg = Message(
-                    id = streamingMessageId,
-                    agentId = agent.id,
-                    role = MessageRole.ASSISTANT,
-                    content = result.output,
-                    tokenCount = result.tokensUsed
-                )
-                val currentMessages = _messages.value.toMutableList()
-                val existingIndex = currentMessages.indexOfFirst { it.id == streamingMessageId }
-                if (existingIndex >= 0) {
-                    currentMessages[existingIndex] = streamingMsg
-                } else {
-                    currentMessages.add(streamingMsg)
+            try {
+                val creds = credentials.value
+                val (apiKey, baseUrl) = when (agent.provider) {
+                    AIProvider.OPENROUTER -> creds.openRouterKey to ""
+                    AIProvider.ZEN -> creds.zenKey to ""
+                    AIProvider.OLLAMA -> creds.ollamaApiKey to creds.ollamaBaseUrl
                 }
-                _messages.value = currentMessages
-            }
 
-            // Save final response to DB
-            repository.addMessage(
-                Message(
+                if (apiKey.isBlank() && agent.provider != AIProvider.OLLAMA) {
+                    val errorMsg = Message(
+                        agentId = agent.id,
+                        role = MessageRole.ASSISTANT,
+                        content = "Fehler: Kein API-Key fuer ${agent.provider.name} konfiguriert. Bitte in den Einstellungen hinterlegen."
+                    )
+                    repository.addMessage(errorMsg)
+                    _messages.value = _messages.value + errorMsg
+                    return@launch
+                }
+
+                val history = repository.getMessagesByAgent(agent.id).first()
+                val messages = mutableListOf<ApiMessage>()
+                messages.add(ApiMessage(role = "system", content = agent.systemPrompt))
+                messages.addAll(history.map { ApiMessage(role = it.role.name.lowercase(), content = it.content) })
+                messages.add(ApiMessage(role = "user", content = content))
+
+                repository.addMessage(
+                    Message(agentId = agent.id, role = MessageRole.USER, content = content)
+                )
+
+                val streamingMessageId = java.util.UUID.randomUUID().toString()
+                var finalOutput = ""
+
+                aiService.streamMessage(
+                    provider = agent.provider,
+                    apiKey = apiKey,
+                    baseUrl = baseUrl,
+                    model = agent.model,
+                    messages = messages,
+                    maxTokens = agent.maxTokens,
+                    temperature = agent.temperature
+                ).collect { result ->
+                    if (result.success) {
+                        finalOutput = result.output
+                        val streamingMsg = Message(
+                            id = streamingMessageId,
+                            agentId = agent.id,
+                            role = MessageRole.ASSISTANT,
+                            content = result.output,
+                            tokenCount = result.tokensUsed
+                        )
+                        val currentMessages = _messages.value.toMutableList()
+                        val existingIndex = currentMessages.indexOfFirst { it.id == streamingMessageId }
+                        if (existingIndex >= 0) {
+                            currentMessages[existingIndex] = streamingMsg
+                        } else {
+                            currentMessages.add(streamingMsg)
+                        }
+                        _messages.value = currentMessages
+                    } else {
+                        // Streaming-Fehler: Fehlermeldung in Chat anzeigen
+                        val errorText = result.error ?: "Unbekannter Fehler"
+                        Log.e("AgentViewModel", "Streaming error: $errorText")
+                        val errorMsg = Message(
+                            agentId = agent.id,
+                            role = MessageRole.ASSISTANT,
+                            content = "Fehler: $errorText"
+                        )
+                        val currentMessages = _messages.value.toMutableList()
+                        val existingIndex = currentMessages.indexOfFirst { it.id == streamingMessageId }
+                        if (existingIndex >= 0) {
+                            currentMessages[existingIndex] = errorMsg
+                        } else {
+                            currentMessages.add(errorMsg)
+                        }
+                        _messages.value = currentMessages
+                    }
+                }
+
+                if (finalOutput.isNotBlank()) {
+                    repository.addMessage(
+                        Message(
+                            agentId = agent.id,
+                            role = MessageRole.ASSISTANT,
+                            content = finalOutput,
+                            tokenCount = finalOutput.split("\\s+".toRegex()).size
+                        )
+                    )
+                    repository.updateAgent(agent.copy(lastRunAt = System.currentTimeMillis()))
+                }
+
+            } catch (e: Exception) {
+                Log.e("AgentViewModel", "sendMessage failed", e)
+                val errorMsg = Message(
                     agentId = agent.id,
                     role = MessageRole.ASSISTANT,
-                    content = finalOutput,
-                    tokenCount = finalOutput.split("\\s+".toRegex()).size
+                    content = "Fehler: ${e.message ?: "Unbekannter Fehler"}"
                 )
-            )
-            repository.updateAgent(agent.copy(lastRunAt = System.currentTimeMillis()))
-
-            _isLoading.value = false
+                repository.addMessage(errorMsg)
+                _messages.value = _messages.value + errorMsg
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 

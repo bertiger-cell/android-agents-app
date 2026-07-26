@@ -1,5 +1,6 @@
 package com.agents.app.ai
 
+import android.util.Log
 import com.agents.app.models.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -146,6 +147,7 @@ class AIProviderService {
         var totalTokens = 0
 
         try {
+            Log.d("AIProviderService", "streamMessage: provider=$provider, model=$model, apiKey=${apiKey.take(8)}...")
             val tokenFlow = when (provider) {
                 AIProvider.OPENROUTER -> streamOpenAiCompatible(
                     endpoint = "https://openrouter.ai/api/v1/chat/completions",
@@ -187,7 +189,19 @@ class AIProviderService {
                     executionTimeMs = System.currentTimeMillis() - startTime
                 ))
             }
+
+            if (fullResponse.isEmpty()) {
+                Log.w("AIProviderService", "streamMessage: no tokens received from $provider")
+                emit(AgentResult(
+                    success = false,
+                    output = "",
+                    error = "Keine Antwort vom ${provider.name}-Server erhalten. Pruefe API-Key und Modellname.",
+                    tokensUsed = 0,
+                    executionTimeMs = System.currentTimeMillis() - startTime
+                ))
+            }
         } catch (e: Exception) {
+            Log.e("AIProviderService", "streamMessage failed: ${e.message}", e)
             emit(AgentResult(
                 success = false,
                 output = fullResponse.toString(),
@@ -231,33 +245,45 @@ class AIProviderService {
         }
 
         val request = requestBuilder.post(body).build()
+        Log.d("AIProviderService", "SSE request to $endpoint, model=$model")
+
         val response = client.newCall(request).execute()
+        Log.d("AIProviderService", "SSE response code: ${response.code}")
 
         if (!response.isSuccessful) {
             val errorBody = response.body?.string() ?: "Empty error"
-            throw Exception("Streaming error (${response.code}): ${errorBody.take(500)}")
+            Log.e("AIProviderService", "SSE error ${response.code}: ${errorBody.take(500)}")
+            throw Exception("Fehler vom Server (${response.code}): ${errorBody.take(500)}")
         }
 
         val source: BufferedSource = response.body?.source()
-            ?: throw Exception("Empty streaming response")
+            ?: throw Exception("Leere Streaming-Antwort")
 
         try {
+            var tokenCount = 0
             while (!source.exhausted()) {
-                val line = source.readUtf8Line() ?: continue
+                val line = source.readUtf8Line() ?: break
                 if (!line.startsWith("data: ")) continue
                 val data = line.removePrefix("data: ").trim()
                 if (data == "[DONE]") break
 
                 val chunk = runCatching {
                     gson.fromJson(data, OpenAIResponse::class.java)
-                }.getOrNull() ?: continue
+                }.getOrNull()
+
+                if (chunk == null) {
+                    Log.w("AIProviderService", "Could not parse SSE chunk: ${data.take(200)}")
+                    continue
+                }
 
                 val choice = chunk.choices?.firstOrNull()
                 val token = choice?.delta?.content ?: choice?.message?.content
                 if (!token.isNullOrBlank()) {
+                    tokenCount++
                     emit(token)
                 }
             }
+            Log.d("AIProviderService", "SSE stream complete, tokens emitted: $tokenCount")
         } finally {
             response.body?.close()
         }
