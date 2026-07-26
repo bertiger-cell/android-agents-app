@@ -7,10 +7,10 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.withContext
 import okio.BufferedSource
 import java.util.concurrent.TimeUnit
 
@@ -24,62 +24,7 @@ class AIProviderService {
 
     private val gson = Gson()
 
-    suspend fun sendMessage(
-        provider: AIProvider,
-        apiKey: String,
-        baseUrl: String,
-        model: String,
-        messages: List<ApiMessage>,
-        maxTokens: Int = 4096,
-        temperature: Float = 0.7f,
-        keepAlive: String = "30m"
-    ): AgentResult = withContext(Dispatchers.IO) {
-        val startTime = System.currentTimeMillis()
-
-        try {
-            val response = when (provider) {
-                AIProvider.OPENROUTER -> callOpenAiCompatible(
-                    endpoint = "https://openrouter.ai/api/v1/chat/completions",
-                    apiKey = apiKey,
-                    model = model,
-                    messages = messages,
-                    maxTokens = maxTokens,
-                    temperature = temperature,
-                    providerName = "OpenRouter",
-                    extraHeaders = mapOf(
-                        "HTTP-Referer" to "https://github.com/bertiger-cell/android-agents-app",
-                        "X-Title" to "Android Agents App"
-                    )
-                )
-                AIProvider.OLLAMA -> callOllama(apiKey, baseUrl, model, messages, temperature, keepAlive)
-                AIProvider.ZEN -> callOpenAiCompatible(
-                    endpoint = "https://opencode.ai/zen/v1/chat/completions",
-                    apiKey = apiKey,
-                    model = model,
-                    messages = messages,
-                    maxTokens = maxTokens,
-                    temperature = temperature,
-                    providerName = "OpenCode Zen"
-                )
-            }
-
-            val executionTime = System.currentTimeMillis() - startTime
-
-            return@withContext AgentResult(
-                success = true,
-                output = response.first,
-                tokensUsed = response.second,
-                executionTimeMs = executionTime
-            )
-        } catch (e: Exception) {
-            return@withContext AgentResult(
-                success = false,
-                output = "",
-                error = e.message ?: "Unknown error",
-                executionTimeMs = System.currentTimeMillis() - startTime
-            )
-        }
-    }
+    // --- Ollama Test & Models ---
 
     suspend fun testOllamaConnection(
         baseUrl: String,
@@ -158,8 +103,6 @@ class AIProviderService {
         }
     }
 
-
-
     suspend fun fetchOpenAICompatibleModels(
         endpoint: String,
         apiKey: String
@@ -186,110 +129,7 @@ class AIProviderService {
         }
     }
 
-    private fun callOpenAiCompatible(
-        endpoint: String,
-        apiKey: String,
-        model: String,
-        messages: List<ApiMessage>,
-        maxTokens: Int,
-        temperature: Float,
-        providerName: String,
-        extraHeaders: Map<String, String> = emptyMap()
-    ): Pair<String, Int> {
-        val requestBody = mapOf(
-            "model" to model,
-            "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
-            "max_tokens" to maxTokens,
-            "temperature" to temperature
-        )
-
-        val json = gson.toJson(requestBody)
-        val mediaType = "application/json".toMediaType()
-        val body = json.toRequestBody(mediaType)
-
-        val requestBuilder = Request.Builder()
-            .url(endpoint)
-            .addHeader("Authorization", "Bearer $apiKey")
-            .addHeader("Content-Type", "application/json")
-
-        for ((key, value) in extraHeaders) {
-            requestBuilder.addHeader(key, value)
-        }
-
-        val request = requestBuilder
-            .post(body)
-            .build()
-
-        val response = client.newCall(request).execute()
-        val responseBody = response.body?.string() ?: throw Exception("Empty response")
-
-        if (!response.isSuccessful) {
-            throw Exception("$providerName error: $responseBody")
-        }
-
-        val openAiResponse = gson.fromJson(responseBody, OpenAIResponse::class.java)
-        val output = openAiResponse.choices?.firstOrNull()?.message?.content ?: ""
-        val tokens = openAiResponse.usage?.total_tokens ?: 0
-
-        return Pair(output, tokens)
-    }
-
-    private fun callOllama(
-        apiKey: String,
-        baseUrl: String,
-        model: String,
-        messages: List<ApiMessage>,
-        temperature: Float,
-        keepAlive: String
-    ): Pair<String, Int> {
-        val requestUrl = buildOllamaUrl(baseUrl, "/api/chat")
-        try {
-            val requestBody = mapOf(
-                "model" to model,
-                "messages" to messages.map { mapOf("role" to it.role, "content" to it.content) },
-                "options" to mapOf("temperature" to temperature, "num_ctx" to 4096, "num_thread" to 8, "num_batch" to 512),
-                "stream" to false,
-                "keep_alive" to keepAlive
-            )
-
-            val json = gson.toJson(requestBody)
-            val mediaType = "application/json".toMediaType()
-            val body = json.toRequestBody(mediaType)
-
-            val requestBuilder = Request.Builder()
-                .url(requestUrl)
-                .addHeader("Content-Type", "application/json")
-
-            if (apiKey.isNotBlank()) {
-                requestBuilder.addHeader("Authorization", "Bearer $apiKey")
-            }
-
-            val request = requestBuilder
-                .post(body)
-                .build()
-
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string() ?: throw Exception("Empty response")
-
-            if (!response.isSuccessful) {
-                throw Exception("Ollama API error (${response.code}) bei $requestUrl: ${responseBody.take(500)}")
-            }
-
-            val ollamaResponse = gson.fromJson(responseBody, OllamaResponse::class.java)
-            val output = ollamaResponse.message?.content ?: ""
-
-            if (output.isBlank()) {
-                throw Exception("Ollama lieferte keine Antwort bei $requestUrl")
-            }
-
-            return Pair(output, 0)
-        } catch (e: Exception) {
-            throw Exception("Ollama-Aufruf fehlgeschlagen bei $requestUrl: ${e.message ?: "Unbekannter Fehler"}")
-        }
-    }
-
-
-    // --- Streaming message API (V2) ---
+    // --- Streaming Message API ---
 
     fun streamMessage(
         provider: AIProvider,
@@ -358,7 +198,7 @@ class AIProviderService {
         }
     }.flowOn(Dispatchers.IO)
 
-    // --- Streaming variants (V2) ---
+    // --- Streaming Providers ---
 
     fun streamOpenAiCompatible(
         endpoint: String,
@@ -404,8 +244,6 @@ class AIProviderService {
         try {
             while (!source.exhausted()) {
                 val line = source.readUtf8Line() ?: continue
-
-                // SSE format: "data: {...}" or "data: [DONE]"
                 if (!line.startsWith("data: ")) continue
                 val data = line.removePrefix("data: ").trim()
                 if (data == "[DONE]") break
