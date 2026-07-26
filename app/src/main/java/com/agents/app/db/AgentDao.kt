@@ -2,21 +2,11 @@ package com.agents.app.db
 
 import androidx.room.*
 import com.agents.app.models.Agent
-import com.agents.app.models.Message
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AgentDao {
-    @Query("SELECT * FROM agents ORDER BY createdAt DESC")
-    fun getAllAgents(): Flow<List<Agent>>
-
-    @Query("SELECT * FROM agents WHERE id = :agentId")
-    suspend fun getAgentById(agentId: String): Agent?
-
-    @Query("SELECT * FROM agents WHERE isActive = 1")
-    fun getActiveAgents(): Flow<List<Agent>>
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert
     suspend fun insertAgent(agent: Agent)
 
     @Update
@@ -27,16 +17,10 @@ interface AgentDao {
 
     @Query("DELETE FROM agents WHERE id = :agentId")
     suspend fun deleteAgentById(agentId: String)
-}
 
-@Dao
-interface MessageDao {
-    @Query("SELECT * FROM messages WHERE agentId = :agentId ORDER BY timestamp ASC")
-    fun getMessagesByAgent(agentId: String): Flow<List<Message>>
+    @Query("SELECT * FROM agents WHERE projectId = :projectId ORDER BY name")
+    fun getAgentsByProject(projectId: String): Flow<List<Agent>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMessage(message: Message)
-
-    @Query("DELETE FROM messages WHERE agentId = :agentId")
-    suspend fun deleteMessagesByAgent(agentId: String)
+    @Query("SELECT * FROM agents WHERE id = :agentId")
+    suspend fun getAgentById(agentId: String): Agent?
 }

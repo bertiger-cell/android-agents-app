@@ -19,6 +19,8 @@ import com.agents.app.models.ProjectEntity
 abstract class AgentDatabase : RoomDatabase() {
     abstract fun agentDao(): AgentDao
     abstract fun messageDao(): MessageDao
+    abstract fun projectDao(): ProjectDao
+    abstract fun chatSessionDao(): ChatSessionDao
 
     companion object {
         @Volatile
