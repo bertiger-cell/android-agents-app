@@ -157,6 +157,8 @@ fun ProjectCard(
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
+                }
                 // Farbpunkt (Projekt-Farbe)
                 Box(
                     modifier = Modifier
@@ -193,6 +195,7 @@ fun ProjectCard(
         }
     }
 }
+
 
 @Composable
 fun CreateProjectDialog(
