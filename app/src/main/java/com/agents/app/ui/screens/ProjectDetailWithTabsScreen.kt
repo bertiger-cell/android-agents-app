@@ -36,7 +36,7 @@ fun ProjectDetailWithTabsScreen(
     onNavigateBack: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
-    var showChatModal by remember { mutableStateOf(false) }
+    // Chat-Modal handled via AppNavigation Dialog
     // Chat-Modal handled via AppNavigation Dialog
 
     Scaffold(
@@ -95,13 +95,6 @@ fun ProjectDetailWithTabsScreen(
                 )
             }
         }
-    }
-
-    if (false) {  // Chat handled via AppNavigation Dialog
-        ChatModalPlaceholder(
-            session = selectedSession!!,
-            onDismiss = { showChatModal = false }
-        )
     }
 }
 
