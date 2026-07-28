@@ -174,7 +174,7 @@ fun AgentSection(
 
             // Sessions (collapsible)
             if (expanded) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                Divider(modifier = Modifier.padding(vertical = 12.dp))
 
                 if (agentSessions.isEmpty()) {
                     Text(
