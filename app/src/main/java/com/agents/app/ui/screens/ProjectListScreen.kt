@@ -29,7 +29,7 @@ import java.util.Locale
 fun ProjectListScreen(
     projects: List<ProjectEntity>,
     onProjectSelected: (ProjectEntity) -> Unit,
-    onCreateProject: () -> Unit,
+    onCreateProject: (name: String, description: String) -> Unit,
     onDeleteProject: (ProjectEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -113,7 +113,7 @@ fun ProjectListScreen(
         CreateProjectDialog(
             onDismiss = { showCreateDialog = false },
             onCreate = { name, description ->
-                onCreateProject()
+                onCreateProject(name, description)
                 showCreateDialog = false
             }
         )

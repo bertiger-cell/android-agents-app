@@ -50,8 +50,8 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                     viewModel.selectProject(project)
                     navController.navigate("project/${project.id}")
                 },
-                onCreateProject = {
-                    // Task 5b: CreateProjectDialog
+                onCreateProject = { name, description ->
+                    viewModel.createProject(name, description)
                 },
                 onDeleteProject = { project ->
                     viewModel.deleteProject(project.id)
