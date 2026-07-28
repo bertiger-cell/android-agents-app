@@ -33,6 +33,7 @@ fun ProjectDetailWithTabsScreen(
     sessions: Map<String, List<ChatSessionEntity>>,
     onCreateAgent: () -> Unit,
     onSessionSelected: (ChatSessionEntity) -> Unit,
+    onNewChat: (Agent) -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
@@ -85,6 +86,7 @@ fun ProjectDetailWithTabsScreen(
                     onSessionSelected = { session ->
                         onSessionSelected(session)
                     },
+                    onNewChat = onNewChat,
                     onCreateAgent = onCreateAgent
                 )
                 1 -> SessionsTab(
@@ -103,6 +105,7 @@ fun AgentsTab(
     agents: List<Agent>,
     sessions: Map<String, List<ChatSessionEntity>>,
     onSessionSelected: (ChatSessionEntity) -> Unit,
+    onNewChat: (Agent) -> Unit = {},
     onCreateAgent: () -> Unit
 ) {
     if (agents.isEmpty()) {
@@ -135,7 +138,8 @@ fun AgentsTab(
                 AgentCardWithSessions(
                     agent = agent,
                     agentSessions = sessions[agent.id] ?: emptyList(),
-                    onSessionSelected = onSessionSelected
+                    onSessionSelected = onSessionSelected,
+                    onNewChat = onNewChat
                 )
             }
             item {
@@ -201,7 +205,8 @@ fun SessionsTab(
 fun AgentCardWithSessions(
     agent: Agent,
     agentSessions: List<ChatSessionEntity>,
-    onSessionSelected: (ChatSessionEntity) -> Unit
+    onSessionSelected: (ChatSessionEntity) -> Unit,
+    onNewChat: (Agent) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -227,6 +232,14 @@ fun AgentCardWithSessions(
                             onSelected = { onSessionSelected(session) }
                         )
                     }
+                    OutlinedButton(
+                        onClick = { onNewChat(agent) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Neuer Chat")
+                    }
                 }
             } else {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -235,6 +248,15 @@ fun AgentCardWithSessions(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { onNewChat(agent) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Chat starten")
+                }
             }
         }
     }

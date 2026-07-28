@@ -150,6 +150,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun startChat(agentId: String) {
+        viewModelScope.launch {
+            val session = repository.getOrCreateSession(agentId)
+            _selectedSession.value = session
+        }
+    }
+
     // ===== SESSION MANAGEMENT =====
 
     fun selectSession(session: ChatSessionEntity?) {
