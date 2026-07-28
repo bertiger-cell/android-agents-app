@@ -55,6 +55,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 },
                 onDeleteProject = { project ->
                     viewModel.deleteProject(project.id)
+                },
+                onSettings = {
+                    navController.navigate("settings")
                 }
             )
         }

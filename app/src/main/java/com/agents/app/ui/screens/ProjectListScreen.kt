@@ -31,6 +31,7 @@ fun ProjectListScreen(
     onProjectSelected: (ProjectEntity) -> Unit,
     onCreateProject: (name: String, description: String) -> Unit,
     onDeleteProject: (ProjectEntity) -> Unit,
+    onSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -39,6 +40,11 @@ fun ProjectListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Meine Projekte") },
+                actions = {
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Einstellungen")
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
