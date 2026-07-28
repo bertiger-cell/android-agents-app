@@ -78,6 +78,7 @@ fun CreateAgentScreen(
     ollamaApiKey: String = "",
     openRouterApiKey: String = "",
     zenApiKey: String = "",
+    projectId: String = "",
     onNavigateBack: () -> Unit,
     onCreateAgent: (
         name: String,
