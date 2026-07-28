@@ -79,7 +79,7 @@ fun ProjectListScreen(
                     "Erstelle dein erstes Projekt um zu starten",
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
-                    background = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
@@ -176,7 +176,7 @@ fun ProjectCard(
                 Text(
                     "Erstellt: ${formatDate(project.createdAt)}",
                     style = MaterialTheme.typography.labelSmall,
-                    background = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 IconButton(
                     onClick = { onDelete() },
