@@ -6,6 +6,11 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.*
 import androidx.navigation.compose.*
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import com.agents.app.ui.AgentViewModel
 import com.agents.app.ui.screens.*
 
@@ -28,6 +33,7 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val availableOpenRouterModels by viewModel.availableOpenRouterModels.collectAsState()
     val availableZenModels by viewModel.availableZenModels.collectAsState()
 
+    Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
         navController = navController,
         startDestination = "projects",
@@ -134,18 +140,14 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
         }
     }
 
-    // ===== Chat Modal (fullscreen overlay, Task 6) =====
+    // ===== Chat Modal (fullscreen overlay) =====
     if (selectedSession != null && selectedProject != null) {
         val sessionAgent = agents.find { it.id == selectedSession!!.agentId }
 
         if (sessionAgent != null) {
-            androidx.compose.ui.window.Dialog(
-                onDismissRequest = { viewModel.selectSession(null) },
-                properties = androidx.compose.ui.window.DialogProperties(
-                    usePlatformDefaultWidth = false,
-                    dismissOnBackPress = true,
-                    dismissOnClickOutside = false
-                )
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
             ) {
                 ChatScreen(
                     session = selectedSession!!,
@@ -165,4 +167,5 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
             }
         }
     }
+    }  // Box close
 }
