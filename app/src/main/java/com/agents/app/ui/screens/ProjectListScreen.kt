@@ -1,5 +1,6 @@
 package com.agents.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -78,7 +79,7 @@ fun ProjectListScreen(
                     "Erstelle dein erstes Projekt um zu starten",
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    background = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
@@ -156,15 +157,15 @@ fun ProjectCard(
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
-                    }
-                }
                 // Farbpunkt (Projekt-Farbe)
-                Surface(
+                Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .padding(4.dp),
-                    shape = CircleShape,
-                    color = Color(android.graphics.Color.parseColor(project.color))
+                        .padding(4.dp)
+                        .background(
+                            Color(android.graphics.Color.parseColor(project.color)),
+                            CircleShape
+                        )
                 )
             }
             Row(
@@ -175,7 +176,7 @@ fun ProjectCard(
                 Text(
                     "Erstellt: ${formatDate(project.createdAt)}",
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    background = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 IconButton(
                     onClick = { onDelete() },
