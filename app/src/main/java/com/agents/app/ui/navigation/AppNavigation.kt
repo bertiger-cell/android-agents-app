@@ -6,26 +6,27 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.*
 import androidx.navigation.compose.*
-import com.agents.app.models.AIProvider
 import com.agents.app.ui.AgentViewModel
 import com.agents.app.ui.screens.*
 
 @Composable
 fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val navController = rememberNavController()
+
+    // V3 states
+    val projects by viewModel.projects.collectAsState()
+    val selectedProject by viewModel.selectedProject.collectAsState()
     val agents by viewModel.agents.collectAsState()
-    val selectedAgent by viewModel.selectedAgent.collectAsState()
+    val sessions by viewModel.sessions.collectAsState()
     val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val selectedSession by viewModel.selectedSession.collectAsState()
     val credentials by viewModel.credentials.collectAsState()
     val ollamaTestMessage by viewModel.ollamaTestMessage.collectAsState()
     val isOllamaTesting by viewModel.isOllamaTesting.collectAsState()
     val availableOllamaModels by viewModel.availableOllamaModels.collectAsState()
     val availableOpenRouterModels by viewModel.availableOpenRouterModels.collectAsState()
     val availableZenModels by viewModel.availableZenModels.collectAsState()
-
-    // V3 state (wird in Task 5b verdrahtet)
-    var currentProject by remember { mutableStateOf<com.agents.app.models.ProjectEntity?>(null) }
 
     NavHost(
         navController = navController,
@@ -38,16 +39,16 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
         // ===== 1. Projects =====
         composable("projects") {
             ProjectListScreen(
-                projects = emptyList(),
+                projects = projects,
                 onProjectSelected = { project ->
-                    currentProject = project
+                    viewModel.selectProject(project)
                     navController.navigate("project/${project.id}")
                 },
                 onCreateProject = {
-                    // Task 5b
+                    // Task 5b: CreateProjectDialog
                 },
                 onDeleteProject = { project ->
-                    // Task 5b
+                    viewModel.deleteProject(project.id)
                 }
             )
         }
@@ -58,17 +59,16 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
             arguments = listOf(navArgument("projectId") { type = NavType.StringType })
         ) { backStackEntry ->
             val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
-            val project = currentProject ?: return@composable
 
             ProjectDetailWithTabsScreen(
-                project = project,
+                project = selectedProject ?: return@composable,
                 agents = agents,
-                sessions = emptyMap(),
+                sessions = sessions,
                 onCreateAgent = {
                     navController.navigate("create-agent/${projectId}")
                 },
                 onSessionSelected = { session ->
-                    // Task 6: Chat modal
+                    viewModel.selectSession(session)
                 },
                 onNavigateBack = {
                     navController.popBackStack()
@@ -76,7 +76,7 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
             )
         }
 
-        // ===== 3. Create Agent (in Projekt) =====
+        // ===== 3. Create Agent =====
         composable(
             route = "create-agent/{projectId}",
             arguments = listOf(navArgument("projectId") { type = NavType.StringType })
@@ -102,13 +102,21 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 zenApiKey = credentials.zenKey,
                 onNavigateBack = { navController.popBackStack() },
                 onCreateAgent = { name, description, provider, systemPrompt, model, temperature ->
-                    viewModel.createAgent(name, description, provider, systemPrompt, model, temperature)
+                    viewModel.createAgent(
+                        projectId = projectId,
+                        name = name,
+                        description = description,
+                        provider = provider,
+                        systemPrompt = systemPrompt,
+                        model = model,
+                        temperature = temperature
+                    )
                     navController.popBackStack()
                 }
             )
         }
 
-        // ===== 4. Settings (global) =====
+        // ===== 4. Settings =====
         composable("settings") {
             SettingsScreen(
                 credentials = credentials,
@@ -124,5 +132,13 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+    }
+
+    // ===== Chat Modal (Platzhalter, Task 6) =====
+    if (selectedSession != null) {
+        ChatModalPlaceholder(
+            session = selectedSession!!,
+            onDismiss = { viewModel.selectSession(null) }
+        )
     }
 }

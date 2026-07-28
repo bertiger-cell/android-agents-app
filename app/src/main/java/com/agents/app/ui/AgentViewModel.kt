@@ -21,26 +21,33 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val aiService = AIProviderService()
     private var messagesJob: Job? = null
 
+    // ===== Projects =====
+    private val _projects = MutableStateFlow<List<ProjectEntity>>(emptyList())
+    val projects: StateFlow<List<ProjectEntity>> = _projects.asStateFlow()
+
+    private val _selectedProject = MutableStateFlow<ProjectEntity?>(null)
+    val selectedProject: StateFlow<ProjectEntity?> = _selectedProject.asStateFlow()
+
+    // ===== Agents (gefiltert nach selectedProject) =====
     private val _agents = MutableStateFlow<List<Agent>>(emptyList())
     val agents: StateFlow<List<Agent>> = _agents.asStateFlow()
 
-    private val _selectedAgent = MutableStateFlow<Agent?>(null)
-    val selectedAgent: StateFlow<Agent?> = _selectedAgent.asStateFlow()
+    // ===== Sessions (agentId -> list) =====
+    private val _sessions = MutableStateFlow<Map<String, List<ChatSessionEntity>>>(emptyMap())
+    val sessions: StateFlow<Map<String, List<ChatSessionEntity>>> = _sessions.asStateFlow()
 
-    private val _currentSession = MutableStateFlow<ChatSessionEntity?>(null)
-
+    // ===== Messages =====
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    private val _ollamaTestMessage = MutableStateFlow<String?>(null)
-    val ollamaTestMessage: StateFlow<String?> = _ollamaTestMessage.asStateFlow()
+    // ===== Current Session =====
+    private val _selectedSession = MutableStateFlow<ChatSessionEntity?>(null)
+    val selectedSession: StateFlow<ChatSessionEntity?> = _selectedSession.asStateFlow()
 
-    private val _isOllamaTesting = MutableStateFlow(false)
-    val isOllamaTesting: StateFlow<Boolean> = _isOllamaTesting.asStateFlow()
-
+    // ===== Model-Fetch States (CreateAgentScreen) =====
     private val _availableOllamaModels = MutableStateFlow<List<OllamaModel>>(emptyList())
     val availableOllamaModels: StateFlow<List<OllamaModel>> = _availableOllamaModels.asStateFlow()
 
@@ -50,6 +57,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val _availableZenModels = MutableStateFlow<List<OpenAIModel>>(emptyList())
     val availableZenModels: StateFlow<List<OpenAIModel>> = _availableZenModels.asStateFlow()
 
+    // ===== Test States (SettingsScreen) =====
+    private val _ollamaTestMessage = MutableStateFlow<String?>(null)
+    val ollamaTestMessage: StateFlow<String?> = _ollamaTestMessage.asStateFlow()
+
+    private val _isOllamaTesting = MutableStateFlow(false)
+    val isOllamaTesting: StateFlow<Boolean> = _isOllamaTesting.asStateFlow()
+
+    // ===== Credentials =====
     val credentials: StateFlow<ProviderCredentials> =
         credentialsRepository.credentials.stateIn(
             viewModelScope,
@@ -62,41 +77,53 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         repository = AgentRepository(app.database, app)
 
         viewModelScope.launch {
-            repository.getAllAgents().collect { agentList ->
-                _agents.value = agentList
+            repository.getAllProjects().collect { projectList ->
+                _projects.value = projectList
             }
         }
     }
 
-    fun selectAgent(agent: Agent?) {
-        messagesJob?.cancel()
-        _selectedAgent.value = agent
-        _currentSession.value = null
+    // ===== PROJECT MANAGEMENT =====
+
+    fun createProject(name: String, description: String = "") {
+        viewModelScope.launch {
+            repository.createProject(name, description)
+        }
+    }
+
+    fun deleteProject(projectId: String) {
+        viewModelScope.launch {
+            repository.deleteProject(projectId)
+        }
+    }
+
+    fun selectProject(project: ProjectEntity) {
+        _selectedProject.value = project
+        _agents.value = emptyList()
+        _sessions.value = emptyMap()
         _messages.value = emptyList()
+        _selectedSession.value = null
+        messagesJob?.cancel()
 
-        if (agent != null) {
-            viewModelScope.launch {
-                var session = repository.getLatestSessionForAgent(agent.id)
-                if (session == null) {
-                    session = ChatSessionEntity(
-                        projectId = agent.projectId,
-                        agentId = agent.id,
-                        title = "Chat with ${agent.name}"
-                    )
-                    repository.createSession(session)
-                }
-                _currentSession.value = session
+        viewModelScope.launch {
+            repository.getAgentsByProject(project.id).collect { agentList ->
+                _agents.value = agentList
 
-                messagesJob = viewModelScope.launch {
-                    repository.getMessagesBySession(session.id).collect { msgs ->
-                        _messages.value = msgs
+                val sessionMap = mutableMapOf<String, List<ChatSessionEntity>>()
+                agentList.forEach { agent ->
+                    repository.getSessionsByAgent(agent.id).collect { sessionList ->
+                        sessionMap[agent.id] = sessionList
+                        _sessions.value = sessionMap.toMap()
                     }
                 }
             }
         }
     }
 
+    // ===== AGENT MANAGEMENT =====
+
     fun createAgent(
+        projectId: String,
         name: String,
         description: String,
         provider: AIProvider,
@@ -105,9 +132,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         temperature: Float
     ) {
         viewModelScope.launch {
-            val defaultProjectId = "default-project"
             repository.createAgent(
-                projectId = defaultProjectId,
+                projectId = projectId,
                 name = name,
                 description = description,
                 provider = provider,
@@ -121,108 +147,85 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteAgent(agent: Agent) {
         viewModelScope.launch {
             repository.deleteAgent(agent)
-            if (_selectedAgent.value?.id == agent.id) {
-                _selectedAgent.value = null
-                _currentSession.value = null
-            }
         }
     }
 
+    // ===== SESSION MANAGEMENT =====
+
+    fun selectSession(session: ChatSessionEntity?) {
+        _selectedSession.value = session
+        messagesJob?.cancel()
+        if (session != null) {
+            messagesJob = viewModelScope.launch {
+                repository.getMessagesBySession(session.id).collect { messageList ->
+                    _messages.value = messageList
+                }
+            }
+        } else {
+            _messages.value = emptyList()
+        }
+    }
+
+    fun clearChat(sessionId: String) {
+        viewModelScope.launch {
+            repository.deleteMessagesBySession(sessionId)
+            _messages.value = emptyList()
+        }
+    }
+
+    // ===== CHAT =====
+
     fun sendMessage(content: String) {
-        val agent = _selectedAgent.value ?: return
-        val session = _currentSession.value ?: return
+        val session = _selectedSession.value ?: return
+        val agent = _agents.value.find { it.id == session.agentId } ?: return
         if (content.isBlank()) return
 
         viewModelScope.launch {
             _isLoading.value = true
 
-            try {
-                val creds = credentials.value
-                val (apiKey, baseUrl) = when (agent.provider) {
-                    AIProvider.OPENROUTER -> creds.openRouterKey to ""
-                    AIProvider.ZEN -> creds.zenKey to ""
-                    AIProvider.OLLAMA -> creds.ollamaApiKey to creds.ollamaBaseUrl
-                }
+            val creds = credentials.value
+            val (apiKey, baseUrl) = when (agent.provider) {
+                AIProvider.OPENROUTER -> creds.openRouterKey to ""
+                AIProvider.ZEN -> creds.zenKey to ""
+                AIProvider.OLLAMA -> creds.ollamaApiKey to creds.ollamaBaseUrl
+            }
 
-                if (apiKey.isBlank() && agent.provider != AIProvider.OLLAMA) {
+            try {
+                val userMsg = Message(
+                    sessionId = session.id,
+                    role = MessageRole.USER,
+                    content = content
+                )
+                repository.addMessage(userMsg)
+                _messages.value = _messages.value + userMsg
+
+                val result = repository.chat(
+                    agentId = agent.id,
+                    userMessage = content,
+                    apiKey = apiKey,
+                    baseUrl = baseUrl
+                )
+
+                if (result.success && result.output.isNotBlank()) {
+                    val assistantMsg = Message(
+                        sessionId = session.id,
+                        role = MessageRole.ASSISTANT,
+                        content = result.output,
+                        tokenCount = result.tokensUsed
+                    )
+                    repository.addMessage(assistantMsg)
+                    _messages.value = _messages.value + assistantMsg
+
+                    repository.updateAgent(agent.copy(lastRunAt = System.currentTimeMillis()))
+                } else {
+                    val errorText = result.error ?: "Unbekannter Fehler"
+                    Log.e("AgentViewModel", "Chat error: $errorText")
                     val errorMsg = Message(
                         sessionId = session.id,
                         role = MessageRole.ASSISTANT,
-                        content = "Fehler: Kein API-Key fuer ${agent.provider.name} konfiguriert. Bitte in den Einstellungen hinterlegen."
+                        content = "Fehler: $errorText"
                     )
-                    repository.addMessage(errorMsg)
                     _messages.value = _messages.value + errorMsg
-                    return@launch
-                }
-
-                val history = repository.getMessagesBySession(session.id).first()
-                val messages = mutableListOf<ApiMessage>()
-                messages.add(ApiMessage(role = "system", content = agent.systemPrompt))
-                messages.addAll(history.map { ApiMessage(role = it.role.name.lowercase(), content = it.content) })
-                messages.add(ApiMessage(role = "user", content = content))
-
-                repository.addMessage(
-                    Message(sessionId = session.id, role = MessageRole.USER, content = content)
-                )
-
-                val streamingMessageId = java.util.UUID.randomUUID().toString()
-                var finalOutput = ""
-
-                aiService.streamMessage(
-                    provider = agent.provider,
-                    apiKey = apiKey,
-                    baseUrl = baseUrl,
-                    model = agent.model,
-                    messages = messages,
-                    maxTokens = agent.maxTokens,
-                    temperature = agent.temperature
-                ).collect { result ->
-                    if (result.success) {
-                        finalOutput = result.output
-                        val streamingMsg = Message(
-                            id = streamingMessageId,
-                            sessionId = session.id,
-                            role = MessageRole.ASSISTANT,
-                            content = result.output,
-                            tokenCount = result.tokensUsed
-                        )
-                        val currentMessages = _messages.value.toMutableList()
-                        val existingIndex = currentMessages.indexOfFirst { it.id == streamingMessageId }
-                        if (existingIndex >= 0) {
-                            currentMessages[existingIndex] = streamingMsg
-                        } else {
-                            currentMessages.add(streamingMsg)
-                        }
-                        _messages.value = currentMessages
-                    } else {
-                        val errorText = result.error ?: "Unbekannter Fehler"
-                        Log.e("AgentViewModel", "Streaming error: $errorText")
-                        val errorMsg = Message(
-                            sessionId = session.id,
-                            role = MessageRole.ASSISTANT,
-                            content = "Fehler: $errorText"
-                        )
-                        val currentMessages = _messages.value.toMutableList()
-                        val existingIndex = currentMessages.indexOfFirst { it.id == streamingMessageId }
-                        if (existingIndex >= 0) {
-                            currentMessages[existingIndex] = errorMsg
-                        } else {
-                            currentMessages.add(errorMsg)
-                        }
-                        _messages.value = currentMessages
-                    }
-                }
-
-                if (finalOutput.isNotBlank()) {
-                    repository.addMessage(
-                        Message(
-                            sessionId = session.id,
-                            role = MessageRole.ASSISTANT,
-                            content = finalOutput,
-                            tokenCount = finalOutput.split("\\s+".toRegex()).size
-                        )
-                    )
-                    repository.updateAgent(agent.copy(lastRunAt = System.currentTimeMillis()))
                 }
 
             } catch (e: Exception) {
@@ -240,6 +243,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ===== CREDENTIALS =====
+
     fun updateOpenRouterKey(key: String) {
         viewModelScope.launch { credentialsRepository.updateOpenRouterKey(key) }
     }
@@ -256,16 +261,15 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { credentialsRepository.updateOllamaApiKey(key) }
     }
 
+    // ===== TEST CONNECTION =====
+
     fun testOllamaConnection(baseUrl: String, apiKey: String) {
         viewModelScope.launch {
             _isOllamaTesting.value = true
             _ollamaTestMessage.value = null
 
             try {
-                val result = aiService.testOllamaConnection(
-                    baseUrl = baseUrl,
-                    apiKey = apiKey
-                )
+                val result = aiService.testOllamaConnection(baseUrl, apiKey)
                 _ollamaTestMessage.value = result.message
             } catch (e: Exception) {
                 _ollamaTestMessage.value = e.message ?: "Unbekannter Fehler"
@@ -274,6 +278,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    // ===== MODEL FETCHING =====
 
     fun fetchAvailableOllamaModels(baseUrl: String, apiKey: String) {
         viewModelScope.launch {
@@ -299,13 +305,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 apiKey = apiKey
             )
             _availableZenModels.value = models
-        }
-    }
-
-    fun clearChat() {
-        val session = _currentSession.value ?: return
-        viewModelScope.launch {
-            repository.deleteMessagesBySession(session.id)
         }
     }
 }
