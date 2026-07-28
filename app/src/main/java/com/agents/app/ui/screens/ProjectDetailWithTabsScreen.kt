@@ -37,7 +37,7 @@ fun ProjectDetailWithTabsScreen(
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     var showChatModal by remember { mutableStateOf(false) }
-    var selectedSession by remember { mutableStateOf<ChatSessionEntity?>(null) }
+    // Chat-Modal handled via AppNavigation Dialog
 
     Scaffold(
         topBar = {
@@ -83,8 +83,6 @@ fun ProjectDetailWithTabsScreen(
                     agents = agents,
                     sessions = sessions,
                     onSessionSelected = { session ->
-                        selectedSession = session
-                        showChatModal = true
                         onSessionSelected(session)
                     },
                     onCreateAgent = onCreateAgent
@@ -92,8 +90,6 @@ fun ProjectDetailWithTabsScreen(
                 1 -> SessionsTab(
                     sessions = sessions.values.flatten(),
                     onSessionSelected = { session ->
-                        selectedSession = session
-                        showChatModal = true
                         onSessionSelected(session)
                     }
                 )
@@ -101,7 +97,7 @@ fun ProjectDetailWithTabsScreen(
         }
     }
 
-    if (showChatModal && selectedSession != null) {
+    if (false) {  // Chat handled via AppNavigation Dialog
         ChatModalPlaceholder(
             session = selectedSession!!,
             onDismiss = { showChatModal = false }
