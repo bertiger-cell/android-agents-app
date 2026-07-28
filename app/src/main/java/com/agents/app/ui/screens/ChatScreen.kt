@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agents.app.models.Agent
+import com.agents.app.models.ChatSessionEntity
 import com.agents.app.models.Message
 import com.agents.app.models.MessageRole
 import kotlinx.coroutines.launch
@@ -21,12 +22,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
+    session: ChatSessionEntity,
     agent: Agent,
     messages: List<Message>,
     isLoading: Boolean,
-    credentialsAvailable: Boolean,
     onSendMessage: (String) -> Unit,
     onNavigateBack: () -> Unit,
+    onSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -46,19 +48,19 @@ fun ChatScreen(
                 title = {
                     Column {
                         Text(
-                            agent.name,
-                            style = MaterialTheme.typography.titleLarge
+                            session.title,
+                            style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = agent.model,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary
+                            agent.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "SchlieBen")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -72,20 +74,6 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (!credentialsAvailable) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.errorContainer
-                ) {
-                    Text(
-                        text = "No credentials configured. Open Settings to add provider credentials.",
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-            }
-
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -109,7 +97,7 @@ fun ChatScreen(
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Thinking...",
+                                "Thinking...",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }

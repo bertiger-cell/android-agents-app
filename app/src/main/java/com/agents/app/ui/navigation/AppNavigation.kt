@@ -6,6 +6,11 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.*
 import androidx.navigation.compose.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
 import com.agents.app.ui.AgentViewModel
 import com.agents.app.ui.screens.*
 
@@ -134,11 +139,40 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
         }
     }
 
-    // ===== Chat Modal (Platzhalter, Task 6) =====
-    if (selectedSession != null) {
-        ChatModalPlaceholder(
-            session = selectedSession!!,
-            onDismiss = { viewModel.selectSession(null) }
-        )
+    // ===== Chat Modal =====
+    if (selectedSession != null && selectedProject != null) {
+        val sessionAgent = agents.find { it.id == selectedSession!!.agentId }
+
+        if (sessionAgent != null) {
+            Dialog(
+                onDismissRequest = { viewModel.selectSession(null) },
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true,
+                    dismissOnClickOutside = false
+                )
+            ) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    ChatScreen(
+                        session = selectedSession!!,
+                        agent = sessionAgent,
+                        messages = messages,
+                        isLoading = isLoading,
+                        onSendMessage = { content ->
+                            viewModel.sendMessage(content)
+                        },
+                        onNavigateBack = {
+                            viewModel.selectSession(null)
+                        },
+                        onSettings = {
+                            navController.navigate("settings")
+                        }
+                    )
+                }
+            }
+        }
     }
 }
