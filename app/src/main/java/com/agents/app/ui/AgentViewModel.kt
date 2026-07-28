@@ -197,6 +197,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 AIProvider.OLLAMA -> creds.ollamaApiKey to creds.ollamaBaseUrl
             }
 
+            if (apiKey.isBlank() && agent.provider != AIProvider.OLLAMA) {
+                val errorMsg = Message(
+                    sessionId = session.id,
+                    role = MessageRole.ASSISTANT,
+                    content = "Fehler: Kein API-Key fur ${agent.provider.name} konfiguriert. Gehe zu Einstellungen > Provider."
+                )
+                _messages.value = _messages.value + errorMsg
+                _isLoading.value = false
+                return@launch
+            }
+
             try {
                 val userMsg = Message(
                     sessionId = session.id,
