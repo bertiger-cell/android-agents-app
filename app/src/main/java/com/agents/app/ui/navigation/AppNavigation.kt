@@ -76,6 +76,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 onSessionSelected = { session ->
                     viewModel.selectSession(session)
                 },
+                onNewChat = { agent ->
+                    viewModel.startChat(agent.id)
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }
