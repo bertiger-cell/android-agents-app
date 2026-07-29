@@ -117,3 +117,11 @@ Nicht tun: Keine der drei Provider-Implementierungen anlegen, keine
     Concurrency aufweisen (keine globalen `GlobalScope`-Aufrufe,
     korrektes `viewModelScope`/`lifecycleScope`, Behandlung von
     Cancellation und Exception-Handling in Coroutine-Blöcken).
+
+15. **Project-Diary-Eintrag nach jeder abgeschlossenen Änderung.**
+    Nach jeder Task-Erledigung (Code-Änderung, Review, Entscheidung)
+    wird ein Eintrag im `diary.md` des Projekts angefügt. Format:
+    `## YYYY-MM-DD HH:MM – <Rolle>`
+    Inhalt: Kurze Zusammenfassung der Änderung, Grund der Entscheidung,
+    offene Punkte (falls vorhanden). Das Diary ist das gemeinsame
+    Gedächtnis aller Agenten – es wird zu Beginn jeder Session gelesen.
