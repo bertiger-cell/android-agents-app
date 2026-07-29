@@ -48,7 +48,7 @@ fun IntroScreen(onFinished: () -> Unit) {
 
     // Thought bubble fade-in after a delay
     var showBubble by remember { mutableStateOf(false) }
-    var quoteIndex by remember { mutableIntStateOf(0) }
+    var quoteIndex by remember { mutableStateOf(0) }
 
     val quotes = listOf(
         "Wo sind wir stehen geblieben?",

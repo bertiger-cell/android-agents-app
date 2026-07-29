@@ -1,6 +1,7 @@
 package com.agents.app.models
 
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import java.util.UUID
 
@@ -12,32 +13,52 @@ enum class AIProvider {
 }
 
 // Base Agent Configuration
-@Entity(tableName = "agents")
+@Entity(
+    tableName = "agents",
+    foreignKeys = [
+        ForeignKey(
+            entity = ProjectEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["projectId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
 data class Agent(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
+    val projectId: String,
     val name: String,
-    val description: String,
+    val description: String = "",
     val provider: AIProvider = AIProvider.OPENROUTER,
-    val systemPrompt: String = "You are a helpful AI assistant.",
     val model: String = "gpt-4",
-    val maxTokens: Int = 4096,
+    val systemPrompt: String = "You are a helpful AI assistant.",
     val temperature: Float = 0.7f,
-    val isActive: Boolean = true,
-    val createdAt: Long = System.currentTimeMillis(),
+    val maxTokens: Int = 4096,
     val lastRunAt: Long? = null
 )
 
 // Chat Message
-@Entity(tableName = "messages")
+@Entity(
+    tableName = "messages",
+    foreignKeys = [
+        ForeignKey(
+            entity = ChatSessionEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sessionId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
 data class Message(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
-    val agentId: String,
+    val sessionId: String,
     val role: MessageRole,
     val content: String,
-    val timestamp: Long = System.currentTimeMillis(),
-    val tokenCount: Int = 0
+    val isInternalThought: Boolean = false,
+    val tokenCount: Int = 0,
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 enum class MessageRole {
@@ -45,6 +66,49 @@ enum class MessageRole {
     USER,
     ASSISTANT
 }
+
+// V3 Room Entities
+
+@Entity(tableName = "projects")
+data class ProjectEntity(
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val description: String = "",
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val folderPath: String,
+    val color: String = "#6200EE",
+    val tags: String = "[]"  // JSON array als String
+)
+
+@Entity(
+    tableName = "chat_sessions",
+    foreignKeys = [
+        ForeignKey(
+            entity = ProjectEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["projectId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = Agent::class,
+            parentColumns = ["id"],
+            childColumns = ["agentId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ]
+)
+data class ChatSessionEntity(
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
+    val projectId: String,
+    val agentId: String,
+    val title: String = "Chat ${System.currentTimeMillis()}",
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isArchived: Boolean = false
+)
 
 // Agent Execution Result
 data class AgentResult(
@@ -134,4 +198,26 @@ data class OllamaModelDetails(
 data class OllamaMessage(
     val role: String?,
     val content: String?
+)
+
+// Domain models (non-Room)
+data class Project(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val description: String = "",
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val folderPath: String,
+    val color: String = "#6200EE",
+    val tags: List<String> = emptyList()
+)
+
+data class ChatSession(
+    val id: String = UUID.randomUUID().toString(),
+    val projectId: String,
+    val agentId: String,
+    val title: String = "Chat ${System.currentTimeMillis()}",
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis(),
+    val isArchived: Boolean = false
 )

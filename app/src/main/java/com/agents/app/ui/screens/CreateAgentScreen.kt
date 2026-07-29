@@ -68,6 +68,7 @@ private fun getDefaultTemplates(): List<AgentTemplate> = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAgentScreen(
+    projectId: String = "",
     availableOllamaModels: List<OllamaModel> = emptyList(),
     availableOpenRouterModels: List<OpenAIModel> = emptyList(),
     availableZenModels: List<OpenAIModel> = emptyList(),

@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.agents.app.models.Agent
+import com.agents.app.models.ChatSessionEntity
 import com.agents.app.models.Message
 import com.agents.app.models.MessageRole
 import kotlinx.coroutines.launch
@@ -22,9 +23,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun ChatScreen(
     agent: Agent,
+    session: ChatSessionEntity,
     messages: List<Message>,
     isLoading: Boolean,
     credentialsAvailable: Boolean,
+    onSettings: () -> Unit = {},
     onSendMessage: (String) -> Unit,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -46,11 +49,11 @@ fun ChatScreen(
                 title = {
                     Column {
                         Text(
-                            agent.name,
-                            style = MaterialTheme.typography.titleLarge
+                            session.title,
+                            style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = agent.model,
+                            text = agent.name,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.secondary
                         )
