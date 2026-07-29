@@ -35,10 +35,17 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
-    // Auto-scroll when messages change (streaming updates)
-    LaunchedEffect(messages.size, messages.lastOrNull()?.content) {
+    // Auto-scroll only when a new message arrives (not on every streaming token).
+    // Avoids fighting with manual scrolling by checking if already near bottom.
+    LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val nearBottom = lastVisible >= messages.size - 3
+            if (nearBottom) {
+                listState.animateScrollToItem(messages.size - 1)
+            } else {
+                listState.scrollToItem(messages.size - 1)
+            }
         }
     }
 

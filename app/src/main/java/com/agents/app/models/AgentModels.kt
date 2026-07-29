@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 import java.util.UUID
+import androidx.compose.runtime.Stable
 
 // AI Provider Types
 enum class AIProvider {
@@ -13,6 +14,7 @@ enum class AIProvider {
 }
 
 // Base Agent Configuration
+@Stable
 @Entity(
     tableName = "agents",
     foreignKeys = [
@@ -39,6 +41,7 @@ data class Agent(
 )
 
 // Chat Message
+@Stable
 @Entity(
     tableName = "messages",
     foreignKeys = [
@@ -69,6 +72,7 @@ enum class MessageRole {
 
 // V3 Room Entities
 
+@Stable
 @Entity(tableName = "projects")
 data class ProjectEntity(
     @PrimaryKey
@@ -82,6 +86,7 @@ data class ProjectEntity(
     val tags: String = "[]"  // JSON array als String
 )
 
+@Stable
 @Entity(
     tableName = "chat_sessions",
     foreignKeys = [
