@@ -95,3 +95,25 @@ Nicht tun: Keine der drei Provider-Implementierungen anlegen, keine
     wird Code dafür geschrieben. Skeleton-Code "for later" ohne
     Architektur-Eintrag zählt als Verstoß gegen diese Regel, auch wenn
     er (noch) nirgends verdrahtet ist.
+
+## Skills-Ausführungsregeln
+
+11. **LiteRT-Pflicht bei lokalen KI-Modellen.** Bei Nutzung des Skills
+    `android-local-ai-integration` ist für On-Device-Inferenz strikt
+    **LiteRT** zu verwenden, nicht das ältere TFLite-Format.
+
+12. **Schrittweise Code-Kontrolle durch den Architekt-Agenten.** Der
+    Architekt prüft Code-Komponenten immer **nach und nach** (nicht
+    alles auf einmal), um die Übersicht zu behalten und gezielt
+    Feedback pro Komponente geben zu können.
+
+13. **Material 3 Compliance für `compose-ui-generator`.** Der Skill
+    `compose-ui-generator` muss sich an alle Material Design 3
+    Design-System-Vorgaben halten (Farbschemata, Typografie, Shapes,
+    Surface-Elevationen). Keine Fallbacks auf Material 2.
+
+14. **Structured Concurrency für alle Coroutines.** Sämtliche
+    Coroutine-Aufrufe im Projekt müssen sauberes Structured
+    Concurrency aufweisen (keine globalen `GlobalScope`-Aufrufe,
+    korrektes `viewModelScope`/`lifecycleScope`, Behandlung von
+    Cancellation und Exception-Handling in Coroutine-Blöcken).

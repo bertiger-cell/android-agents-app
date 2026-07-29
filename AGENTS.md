@@ -9,6 +9,31 @@ Volle Architektur: siehe `ARCHITECTURE.md`.
 Detaillierte Arbeitsregeln: siehe `RULES.md`.
 Fahrplan: siehe `ROADMAP.md`.
 
+## Agenten-Rollen
+
+### Coder-Agent (Code-Generierung & Umsetzung)
+Zuständig für die Generierung und Implementierung von Code.
+Verfügt über folgende Skills:
+
+- **kotlin-idioms-refactor**: Analysiert bestehenden Code und wandelt ihn in hoch-idiomatischen Kotlin-Code um. Nutzt Erweiterungen, Scoping-Funktionen (`let`, `apply`, `also`, `run`), Data Classes, Sealed Classes/Interfaces und Pattern Matching via `when`.
+- **android-architecture-builder**: Generiert und strukturiert App-Architekturen nach Google-Empfehlungen. Erstellt Clean-Architecture-Schichten, setzt MVVM/MVI um, implementiert das Repository Pattern und richtet DI via Hilt oder Koin ein.
+- **kotlin-coroutines-flow**: Entwickelt und optimiert asynchrone Abläufe und Datenstreams. StateFlow, SharedFlow, benutzerdefinierte Operatoren, Coroutine-Contexts, Error-Handling und Structured Concurrency.
+- **gradle-kts-migration**: Verwaltet und modernisiert das Build-System. Konvertierung zu Kotlin DSL, Version Catalogs, Multi-Modul-Projekte.
+- **compose-ui-generator**: Erstellt moderne deklarative UIs in Jetpack Compose. `@Composable`-Funktionen, Layout-Composables, State Hoisting, `@Preview`.
+- **material3-theme-generator**: Implementiert Material Design 3. Dynamische Farbschemata (inkl. Dynamic Color), Dark/Light-Themes, Typografie/Shape/Surface.
+- **room-database-engineer**: Erstellt und verwaltet die lokale Persistenz mit Room. `@Entity`, `@Dao`, TypeConverter, SQL-Queries, Migrationen, FTS.
+- **android-local-ai-integration**: Einbindung von On-Device-KI (LiteRT, MediaPipe). JNI/C++-Bindings, Speicheroptimierung, lokale Prompts/Inferenzen.
+- **android-background-tasks**: Verwaltet Hintergrundprozesse. WorkManager, Foreground Services, Doze-Mode, App-Standby.
+
+### Architekt-Agent (Kontrolle & Qualitätssicherung)
+Zuständig für Prüfung, Optimierung und Qualitätssicherung.
+Verfügt über folgende analytische Skills:
+
+- **compose-performance-optimizer**: Identifiziert und behebt Performance-Flaschenhälse in Compose UI-Trees. Analysiert Recomposition, `@Stable`/`@Immutable`, `derivedStateOf`, LazyList-Keys.
+- **github-actions-android-ci**: Automatisiert Build/Test/Deployment. Workflow-YML, APK/AAB-Builds, Caching, Signieren von Release-Builds.
+- **github-pr-assistant**: Unterstützt Code-Review auf GitHub. PR-Beschreibungen, Git-Diff-Prüfung, semantische Commits.
+- **compose-navigation-manager**: Verwaltet Navigation Compose typsicher. Argument-Pässe, Navigations-Graphen, ViewModel-Lifecycle-Anbindung.
+
 ## Build & Verifikation
 - Build: `./gradlew assembleDebug`
 - Test: `./gradlew test`

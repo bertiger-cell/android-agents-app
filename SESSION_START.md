@@ -25,7 +25,24 @@ mehrere Sachen hintereinander gebe, ohne es jedes Mal zu wiederholen:
   auf meine Freigabe zu warten (Regel 10)
 - Bei Mehrdeutigkeit fragen, nicht raten (Regel 4)
 - Keine Verifikation behaupten, die nicht stattgefunden hat (Regel 2)
+- Skills-Ausführungsregeln aus RULES.md (Regeln 11-14) beachten
+  (LiteRT-Pflicht, schrittweise Kontrolle, M3-Compliance, Structured
+  Concurrency)
 
 Wenn du merkst, dass eine Aufgabe größer wird als ursprünglich gedacht
 (mehr Dateien, neue Komponente, unklare Anforderung): stopp, sag mir
 warum, warte auf meine Antwort – auch mitten in einer Aufgabe.
+
+## Initialisierung: Rollen & Skills laden
+
+Vor jeder Code-Generierung oder -Analyse sind folgende Kontexte zu laden:
+
+1. **AGENTS.md** – Rollenbeschreibungen (Coder + Architekt) und deren
+   zugehörige Skills vollständig einlesen.
+2. **RULES.md** – Globale Ausführungsregeln (insbes. Regeln 8-14)
+   für die Skills als verbindliche Vorgaben laden.
+3. **ARCHITECTURE.md** – Architektur-Entscheidungen und Non-Goals
+   prüfen, um Abweichungen zu vermeiden.
+
+Erst wenn alle drei Kontexte geladen sind, darf Code generiert oder
+analysiert werden.
