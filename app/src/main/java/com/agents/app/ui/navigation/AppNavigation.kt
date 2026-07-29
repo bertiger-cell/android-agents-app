@@ -173,6 +173,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                     },
                     onSettings = {
                         navController.navigate("settings")
+                    },
+                    onRenameSession = { newTitle ->
+                        viewModel.renameSession(selectedSession!!.id, newTitle)
                     }
                 )
             }

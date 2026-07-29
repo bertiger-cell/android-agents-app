@@ -1,5 +1,6 @@
 package com.agents.app.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,9 +30,12 @@ fun ChatScreen(
     onSendMessage: (String) -> Unit,
     onNavigateBack: () -> Unit,
     onSettings: () -> Unit = {},
+    onRenameSession: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
+    var showTitleDialog by remember { mutableStateOf(false) }
+    var editTitle by remember { mutableStateOf(session.title) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -56,7 +60,11 @@ fun ChatScreen(
                     Column {
                         Text(
                             session.title,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.clickable { 
+                                editTitle = session.title
+                                showTitleDialog = true 
+                            }
                         )
                         Text(
                             agent.name,
@@ -155,6 +163,38 @@ fun ChatScreen(
                 }
             }
         }
+    }
+
+    // Title edit dialog
+    if (showTitleDialog) {
+        AlertDialog(
+            onDismissRequest = { showTitleDialog = false },
+            title = { Text("Chat umbenennen") },
+            text = {
+                OutlinedTextField(
+                    value = editTitle,
+                    onValueChange = { editTitle = it },
+                    label = { Text("Titel") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (editTitle.isNotBlank()) {
+                        onRenameSession(editTitle.trim())
+                        showTitleDialog = false
+                    }
+                }) {
+                    Text("Speichern")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTitleDialog = false }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
     }
 }
 

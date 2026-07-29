@@ -220,8 +220,41 @@ class AgentRepository(
             // Agent + Session updaten
             agentDao.updateAgent(agent.copy(lastRunAt = System.currentTimeMillis()))
             chatSessionDao.updateSession(session.copy(updatedAt = System.currentTimeMillis()))
+
+            // Titel generieren (nur beim ersten Chat)
+            if (session.title.startsWith("Chat ")) {
+                generateAndUpdateTitle(session.id, agent, apiKey, baseUrl, userMessage)
+            }
         }
 
         return finalResult
+    }
+
+    private suspend fun generateAndUpdateTitle(
+        sessionId: String,
+        agent: Agent,
+        apiKey: String,
+        baseUrl: String,
+        firstMessage: String
+    ) {
+        val titlePrompt = listOf(
+            ApiMessage(role = "system", content = "Generate a short 3-5 word title for this conversation. Respond with ONLY the title, no quotes, no punctuation."),
+            ApiMessage(role = "user", content = firstMessage)
+        )
+        val result = aiService.streamMessage(
+            provider = agent.provider,
+            apiKey = apiKey,
+            baseUrl = baseUrl,
+            model = agent.model,
+            messages = titlePrompt,
+            maxTokens = 30,
+            temperature = 0.3f
+        ).first()
+
+        if (result.success && result.output.isNotBlank()) {
+            val title = result.output.trim().removeSurrounding(""").removeSurrounding("'")
+            val session = chatSessionDao.getSessionById(sessionId) ?: return
+            chatSessionDao.updateSession(session.copy(title = title))
+        }
     }
 }

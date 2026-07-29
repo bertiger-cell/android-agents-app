@@ -185,6 +185,20 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun renameSession(sessionId: String, newTitle: String) {
+        if (newTitle.isBlank()) return
+        viewModelScope.launch {
+            repository.getSessionById(sessionId)?.let { session ->
+                repository.updateSession(session.copy(title = newTitle.trim()))
+                // Update in-memory state
+                val updated = _selectedSession.value?.let {
+                    if (it.id == sessionId) it.copy(title = newTitle.trim()) else null
+                }
+                if (updated != null) _selectedSession.value = updated
+            }
+        }
+    }
+
     // ===== CHAT =====
 
     fun sendMessage(content: String) {
