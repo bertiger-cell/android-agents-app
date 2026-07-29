@@ -105,18 +105,24 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         _selectedSession.value = null
         messagesJob?.cancel()
 
-        viewModelScope.launch {
-            repository.getAgentsByProject(project.id).collect { agentList ->
-                _agents.value = agentList
-
-                val sessionMap = mutableMapOf<String, List<ChatSessionEntity>>()
-                agentList.forEach { agent ->
-                    repository.getSessionsByAgent(agent.id).collect { sessionList ->
-                        sessionMap[agent.id] = sessionList
-                        _sessions.value = sessionMap.toMap()
+        messagesJob = viewModelScope.launch {
+            repository.getAgentsByProject(project.id)
+                .flatMapLatest { agentList ->
+                    _agents.value = agentList
+                    if (agentList.isEmpty()) {
+                        _sessions.value = emptyMap()
+                        return@flatMapLatest flowOf(emptyMap())
                     }
+                    combine(
+                        agentList.map { agent ->
+                            repository.getSessionsByAgent(agent.id)
+                                .map { sessions -> agent.id to sessions }
+                        }
+                    ) { pairs -> pairs.toMap() }
                 }
-            }
+                .collect { sessionMap ->
+                    _sessions.value = sessionMap
+                }
         }
     }
 
