@@ -204,7 +204,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     role = MessageRole.ASSISTANT,
                     content = "Fehler: Agent nicht gefunden."
                 )
-                _messages.value = _messages.value + errorMsg
+                addMessage(errorMsg)
                 _isLoading.value = false
                 return@launch
             }
@@ -222,7 +222,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     role = MessageRole.ASSISTANT,
                     content = "Fehler: Kein API-Key fur ${agent.provider.name} konfiguriert. Gehe zu Einstellungen."
                 )
-                _messages.value = _messages.value + errorMsg
+                addMessage(errorMsg)
                 _isLoading.value = false
                 return@launch
             }
@@ -235,7 +235,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     role = MessageRole.USER,
                     content = content
                 )
-                _messages.value = _messages.value + userMsg
+                addMessage(userMsg)
 
                 val result = repository.chat(
                     agentId = agent.id,
@@ -251,7 +251,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                         content = result.output,
                         tokenCount = result.tokensUsed
                     )
-                    _messages.value = _messages.value + assistantMsg
+                    addMessage(assistantMsg)
 
                     repository.updateAgent(agent.copy(lastRunAt = System.currentTimeMillis()))
                 } else {
@@ -262,7 +262,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                         role = MessageRole.ASSISTANT,
                         content = "Fehler: $errorText"
                     )
-                    _messages.value = _messages.value + errorMsg
+                    addMessage(errorMsg)
                 }
 
             } catch (e: Exception) {
@@ -272,11 +272,16 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     role = MessageRole.ASSISTANT,
                     content = "Fehler: ${e.message ?: "Unbekannter Fehler"}"
                 )
-                _messages.value = _messages.value + errorMsg
+                addMessage(errorMsg)
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+
+    // Helper: add message to in-memory list
+    private fun addMessage(msg: Message) {
+        _messages.value = _messages.value + msg
     }
 
     // ===== CREDENTIALS =====

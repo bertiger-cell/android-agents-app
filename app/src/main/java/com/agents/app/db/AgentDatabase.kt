@@ -23,9 +23,6 @@ abstract class AgentDatabase : RoomDatabase() {
     abstract fun chatSessionDao(): ChatSessionDao
 
     companion object {
-        @Volatile
-        private var INSTANCE: AgentDatabase? = null
-
         private val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // Greenfield: alte Tabellen loeschen, neue werden automatisch erstellt
@@ -34,17 +31,18 @@ abstract class AgentDatabase : RoomDatabase() {
             }
         }
 
+        private var database: AgentDatabase? = null
+
         fun getDatabase(context: Context): AgentDatabase {
-            return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
+            return database ?: synchronized(this) {
+                Room.databaseBuilder(
                     context.applicationContext,
                     AgentDatabase::class.java,
                     "agents_database"
                 )
                 .addMigrations(MIGRATION_1_2)
                 .build()
-                INSTANCE = instance
-                instance
+                .also { database = it }
             }
         }
     }
