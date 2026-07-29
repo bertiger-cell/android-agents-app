@@ -4,5 +4,10 @@ import android.app.Application
 import com.agents.app.db.AgentDatabase
 
 class AgentsApplication : Application() {
-    val database by lazy { AgentDatabase.getDatabase(this) }
+    lateinit var database: AgentDatabase
+
+    override fun onCreate() {
+        super.onCreate()
+        database = AgentDatabase.getDatabase(this)
+    }
 }
