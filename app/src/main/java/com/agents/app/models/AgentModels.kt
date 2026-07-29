@@ -2,6 +2,7 @@ package com.agents.app.models
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.UUID
 import androidx.compose.runtime.Stable
@@ -24,7 +25,8 @@ enum class AIProvider {
             childColumns = ["projectId"],
             onDelete = ForeignKey.CASCADE
         )
-    ]
+    ],
+    indices = [Index(value = ["projectId"])]
 )
 data class Agent(
     @PrimaryKey
@@ -51,7 +53,8 @@ data class Agent(
             childColumns = ["sessionId"],
             onDelete = ForeignKey.CASCADE
         )
-    ]
+    ],
+    indices = [Index(value = ["sessionId"])]
 )
 data class Message(
     @PrimaryKey
@@ -73,7 +76,10 @@ enum class MessageRole {
 // V3 Room Entities
 
 @Stable
-@Entity(tableName = "projects")
+@Entity(
+    tableName = "projects",
+    indices = [Index(value = ["folderPath"], unique = true)]
+)
 data class ProjectEntity(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
@@ -102,6 +108,10 @@ data class ProjectEntity(
             childColumns = ["agentId"],
             onDelete = ForeignKey.CASCADE
         )
+    ],
+    indices = [
+        Index(value = ["projectId"]),
+        Index(value = ["agentId"])
     ]
 )
 data class ChatSessionEntity(
