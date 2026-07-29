@@ -36,9 +36,7 @@ class AgentRepository(
         val folderPath = context.filesDir.path + "/projects/${name}_$projectId"
         File(folderPath).mkdirs()
         // Leeres Projekt-Tagebuch anlegen
-        File(folderPath, "diary.md").writeText("# Project Diary – $name
-
-")
+        File(folderPath, "diary.md").writeText("# Project Diary – $name\n\n")
 
         val projectEntity = ProjectEntity(
             id = projectId,
@@ -180,10 +178,7 @@ class AgentRepository(
         val project = projectDao.getProjectById(projectId) ?: return
         val file = File("${project.folderPath}/diary.md")
         val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
-        val entry = "
-## $timestamp – $role
-$content
-"
+        val entry = "\n## $timestamp – $role\n$content\n"
         file.appendText(entry)
         projectDao.updateProject(project.copy(updatedAt = System.currentTimeMillis()))
     }
@@ -279,7 +274,7 @@ $content
         ).first()
 
         if (result.success && result.output.isNotBlank()) {
-            val title = result.output.trim().removeSurrounding(""").removeSurrounding("'")
+            val title = result.output.trim().removeSurrounding("\"").removeSurrounding("'")
             val session = chatSessionDao.getSessionById(sessionId) ?: return
             chatSessionDao.updateSession(session.copy(title = title))
         }
