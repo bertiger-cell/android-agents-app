@@ -46,3 +46,9 @@ Vor jeder Code-Generierung oder -Analyse sind folgende Kontexte zu laden:
 
 Erst wenn alle drei Kontexte geladen sind, darf Code generiert oder
 analysiert werden.
+
+### 4. Project Diary lesen (falls vorhanden)
+Prüfe, ob im Projekt-Root eine Datei `diary.md` existiert. Falls ja,
+lies sie ein – sie enthält Entscheidungen und Ergebnisse vorheriger
+Sessions. Nach jeder abgeschlossenen Änderung wird ein neuer Eintrag
+angefügt (siehe RULES.md Regel 15).

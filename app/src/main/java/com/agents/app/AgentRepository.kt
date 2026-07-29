@@ -7,6 +7,9 @@ import com.agents.app.models.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 class AgentRepository(
@@ -32,6 +35,10 @@ class AgentRepository(
 
         val folderPath = context.filesDir.path + "/projects/${name}_$projectId"
         File(folderPath).mkdirs()
+        // Leeres Projekt-Tagebuch anlegen
+        File(folderPath, "diary.md").writeText("# Project Diary – $name
+
+")
 
         val projectEntity = ProjectEntity(
             id = projectId,
@@ -160,6 +167,26 @@ class AgentRepository(
 
     suspend fun deleteMessagesBySession(sessionId: String) =
         messageDao.deleteMessagesBySession(sessionId)
+
+    // --- Project Diary --------------------------------------------------
+
+    suspend fun readDiary(projectId: String): String {
+        val project = projectDao.getProjectById(projectId) ?: return ""
+        val file = File("${project.folderPath}/diary.md")
+        return if (file.exists()) file.readText() else ""
+    }
+
+    suspend fun appendToDiary(projectId: String, role: String, content: String) {
+        val project = projectDao.getProjectById(projectId) ?: return
+        val file = File("${project.folderPath}/diary.md")
+        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
+        val entry = "
+## $timestamp – $role
+$content
+"
+        file.appendText(entry)
+        projectDao.updateProject(project.copy(updatedAt = System.currentTimeMillis()))
+    }
 
     // --- Chat (hybrid session lifecycle) ---
 

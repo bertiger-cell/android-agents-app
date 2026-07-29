@@ -119,6 +119,39 @@ Dark Mode erzwungen (`darkTheme = true, dynamicColor = false`):
 - Surface: `#1A1A1A`
 - Shapes: 8-32dp abgerundet
 
+## Project Diary (Projekt-Tagebuch)
+
+Ein einfaches Markdown-File `diary.md` im Projekt-Ordner (`folderPath`).
+Dient als Shared Memory für alle Entwicklung-Agenten (Coder, Architekt).
+
+### Zweck
+- Entscheidungen festhalten (warum wurde X so implementiert?)
+- Code-Review-Ergebnisse dokumentieren
+- Offene Fragen / Blockaden notieren
+- Kontext für nachfolgende Agenten-Sessions bereitstellen
+
+### Format
+```
+# Project Diary – <Projektname>
+
+## 2024-07-29 04:30 – Coder
+Kurze Beschreibung der Änderung/Entscheidung.
+
+## 2024-07-29 04:35 – Architekt
+Review-Ergebnis, Genehmigung oder Einwand.
+```
+
+### Implementierung
+- `AgentRepository.kt`: `readDiary(projectId)` und `appendToDiary(projectId, role, content)`
+- Datei-Pfad: `{folderPath}/diary.md`
+- Anlegen bei Projekt-Erstellung (leeres File)
+- Anhängen nach jeder abgeschlossenen Änderung (via Repository-Methoden)
+- Lesen am Anfang jeder Agenten-Session (via SESSION_START.md)
+
+### Kein RAG
+Das Diary ist ein plain-text Markdown-File, kein Vector Store.
+Agenten lesen das komplette File und entscheiden selbst, was relevant ist.
+
 ## Non-Goals für v1
 - Tool-Calling / Function-Calling
 - Mehrere Agenten gleichzeitig / Orchestrierung
