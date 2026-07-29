@@ -18,7 +18,6 @@ import com.agents.app.models.Agent
 import com.agents.app.models.ChatSessionEntity
 import com.agents.app.models.Message
 import com.agents.app.models.MessageRole
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +36,6 @@ fun ChatScreen(
     var showTitleDialog by remember { mutableStateOf(false) }
     var editTitle by remember { mutableStateOf(session.title) }
     val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
 
     // Auto-scroll only when a new message arrives (not on every streaming token).
     // Avoids fighting with manual scrolling by checking if already near bottom.
