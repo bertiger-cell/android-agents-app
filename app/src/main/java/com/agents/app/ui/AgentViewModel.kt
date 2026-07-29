@@ -184,11 +184,24 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     fun sendMessage(content: String) {
         val session = _selectedSession.value ?: return
-        val agent = _agents.value.find { it.id == session.agentId } ?: return
         if (content.isBlank()) return
 
         viewModelScope.launch {
             _isLoading.value = true
+
+            // Load agent from DB as fallback if not in _agents state
+            val agent = _agents.value.find { it.id == session.agentId }
+                ?: repository.getAgentById(session.agentId)
+            if (agent == null) {
+                val errorMsg = Message(
+                    sessionId = session.id,
+                    role = MessageRole.ASSISTANT,
+                    content = "Fehler: Agent nicht gefunden."
+                )
+                _messages.value = _messages.value + errorMsg
+                _isLoading.value = false
+                return@launch
+            }
 
             val creds = credentials.value
             val (apiKey, baseUrl) = when (agent.provider) {
@@ -201,7 +214,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 val errorMsg = Message(
                     sessionId = session.id,
                     role = MessageRole.ASSISTANT,
-                    content = "Fehler: Kein API-Key fur ${agent.provider.name} konfiguriert. Gehe zu Einstellungen > Provider."
+                    content = "Fehler: Kein API-Key fur ${agent.provider.name} konfiguriert. Gehe zu Einstellungen."
                 )
                 _messages.value = _messages.value + errorMsg
                 _isLoading.value = false
@@ -209,12 +222,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             try {
+                // Add user message to in-memory list only.
+                // repository.chat() handles DB insertion + history building.
                 val userMsg = Message(
                     sessionId = session.id,
                     role = MessageRole.USER,
                     content = content
                 )
-                repository.addMessage(userMsg)
                 _messages.value = _messages.value + userMsg
 
                 val result = repository.chat(
@@ -231,7 +245,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                         content = result.output,
                         tokenCount = result.tokensUsed
                     )
-                    repository.addMessage(assistantMsg)
                     _messages.value = _messages.value + assistantMsg
 
                     repository.updateAgent(agent.copy(lastRunAt = System.currentTimeMillis()))
@@ -253,7 +266,6 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     role = MessageRole.ASSISTANT,
                     content = "Fehler: ${e.message ?: "Unbekannter Fehler"}"
                 )
-                repository.addMessage(errorMsg)
                 _messages.value = _messages.value + errorMsg
             } finally {
                 _isLoading.value = false

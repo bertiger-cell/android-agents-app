@@ -272,6 +272,15 @@ class AIProviderService {
                 }.getOrNull()
 
                 if (chunk == null) {
+                    // Check if this is an error response from the provider
+                    val errorInfo = runCatching {
+                        gson.fromJson(data, Map::class.java)
+                    }.getOrNull()
+                    val errorObj = errorInfo?.get("error")
+                    if (errorObj is Map<*, *>) {
+                        val errMsg = errorObj["message"]?.toString() ?: "Unknown provider error"
+                        throw Exception("AI Provider Error: $errMsg")
+                    }
                     Log.w("AIProviderService", "Could not parse SSE chunk: ${data.take(200)}")
                     continue
                 }
