@@ -1,5 +1,6 @@
 package com.agents.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,17 +9,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.agents.app.models.Agent
 import com.agents.app.models.ChatSessionEntity
 import com.agents.app.models.ProjectEntity
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,12 +32,13 @@ fun ProjectDetailWithTabsScreen(
     agents: List<Agent>,
     sessions: Map<String, List<ChatSessionEntity>>,
     onCreateAgent: () -> Unit,
-    onStartChat: (Agent) -> Unit,
     onSessionSelected: (ChatSessionEntity) -> Unit,
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    onNewChat: (Agent) -> Unit = {},
+    onNavigateBack: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
+    // Chat-Modal handled via AppNavigation Dialog
+    // Chat-Modal handled via AppNavigation Dialog
 
     Scaffold(
         topBar = {
@@ -49,21 +55,17 @@ fun ProjectDetailWithTabsScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Zurück")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Zuruck")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onCreateAgent) {
-                Icon(Icons.Filled.Add, contentDescription = "Agent hinzufügen")
-            }
         }
     ) { padding ->
         Column(modifier = Modifier.padding(padding)) {
+
             TabRow(selectedTabIndex = selectedTabIndex) {
                 Tab(
                     selected = selectedTabIndex == 0,
@@ -81,12 +83,17 @@ fun ProjectDetailWithTabsScreen(
                 0 -> AgentsTab(
                     agents = agents,
                     sessions = sessions,
-                    onSessionSelected = onSessionSelected,
+                    onSessionSelected = { session ->
+                        onSessionSelected(session)
+                    },
+                    onNewChat = onNewChat,
                     onCreateAgent = onCreateAgent
                 )
                 1 -> SessionsTab(
                     sessions = sessions.values.flatten(),
-                    onSessionSelected = onSessionSelected
+                    onSessionSelected = { session ->
+                        onSessionSelected(session)
+                    }
                 )
             }
         }
@@ -94,11 +101,11 @@ fun ProjectDetailWithTabsScreen(
 }
 
 @Composable
-private fun AgentsTab(
+fun AgentsTab(
     agents: List<Agent>,
     sessions: Map<String, List<ChatSessionEntity>>,
     onSessionSelected: (ChatSessionEntity) -> Unit,
-    onStartChat: (Agent) -> Unit,
+    onNewChat: (Agent) -> Unit = {},
     onCreateAgent: () -> Unit
 ) {
     if (agents.isEmpty()) {
@@ -109,7 +116,12 @@ private fun AgentsTab(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Filled.SmartToy, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.tertiary)
+            Icon(
+                Icons.Filled.SmartToy,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.tertiary
+            )
             Spacer(modifier = Modifier.height(16.dp))
             Text("Keine Agenten", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(24.dp))
@@ -127,7 +139,7 @@ private fun AgentsTab(
                     agent = agent,
                     agentSessions = sessions[agent.id] ?: emptyList(),
                     onSessionSelected = onSessionSelected,
-                    onStartChat = onStartChat
+                    onNewChat = onNewChat
                 )
             }
             item {
@@ -135,11 +147,11 @@ private fun AgentsTab(
                     onClick = onCreateAgent,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp)
+                        .padding(top = 16.dp)
                 ) {
-                    Icon(Icons.Filled.Add, null)
+                    Icon(Icons.Filled.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Agent hinzufügen")
+                    Text("Agent hinzufugen")
                 }
             }
         }
@@ -147,7 +159,7 @@ private fun AgentsTab(
 }
 
 @Composable
-private fun SessionsTab(
+fun SessionsTab(
     sessions: List<ChatSessionEntity>,
     onSessionSelected: (ChatSessionEntity) -> Unit
 ) {
@@ -159,12 +171,17 @@ private fun SessionsTab(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(Icons.Filled.SmartToy, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.tertiary)
+            Icon(
+                Icons.Filled.ChatBubble,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.tertiary
+            )
             Spacer(modifier = Modifier.height(16.dp))
             Text("Keine Sessions", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Starte einen Chat um eine Session zu erstellen",
+                "Erstelle einen Agenten und starte einen Chat",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -185,57 +202,60 @@ private fun SessionsTab(
 }
 
 @Composable
-private fun AgentCardWithSessions(
+fun AgentCardWithSessions(
     agent: Agent,
     agentSessions: List<ChatSessionEntity>,
     onSessionSelected: (ChatSessionEntity) -> Unit,
-    onStartChat: (Agent) -> Unit
+    onNewChat: (Agent) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(agent.name, style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                "${agent.provider.name} • ${agent.model}",
+                "${agent.provider.name}  ${agent.model}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            if (agent.description.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    agent.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Button(
-                onClick = { onStartChat(agent) },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Chat starten")
-            }
-
-            Divider(modifier = Modifier.padding(vertical = 12.dp))
-
-            if (agentSessions.isEmpty()) {
-                Text(
-                    "Noch keine Chat-Sessions",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
+            if (agentSessions.isNotEmpty()) {
+                Divider(modifier = Modifier.padding(vertical = 12.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     agentSessions.forEach { session ->
-                        SessionListItem(session, onSessionSelected)
+                        SessionListItem(
+                            session = session,
+                            onSelected = { onSessionSelected(session) }
+                        )
                     }
+                    OutlinedButton(
+                        onClick = { onNewChat(agent) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Neuer Chat")
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Noch keine Sessions",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { onNewChat(agent) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Chat starten")
                 }
             }
         }
@@ -243,7 +263,7 @@ private fun AgentCardWithSessions(
 }
 
 @Composable
-private fun SessionListItem(
+fun SessionListItem(
     session: ChatSessionEntity,
     onSelected: (ChatSessionEntity) -> Unit
 ) {
@@ -262,7 +282,12 @@ private fun SessionListItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(session.title, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    session.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Text(
                     formatDate(session.updatedAt),
                     style = MaterialTheme.typography.labelSmall,
@@ -276,4 +301,54 @@ private fun SessionListItem(
             )
         }
     }
+}
+
+@Composable
+fun ChatModalPlaceholder(
+    session: ChatSessionEntity,
+    onDismiss: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable { onDismiss() },
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.6f)
+                .clickable(enabled = false) {},
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Chat  ${session.title}",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "(Task 6: ChatScreen wird hier eingefugt)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(onClick = onDismiss) {
+                    Text("Schliessen")
+                }
+            }
+        }
+    }
+}
+
+private fun formatDate(timestamp: Long): String {
+    val sdf = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+    return sdf.format(java.util.Date(timestamp))
 }

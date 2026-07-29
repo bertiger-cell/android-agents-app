@@ -127,3 +127,31 @@ Dark Mode erzwungen (`darkTheme = true, dynamicColor = false`):
 
 ## Versionierung
 Diese Datei wird zuerst geändert, dann der Code – nicht umgekehrt.
+
+## Provider-Zugangsdaten – Ist-Zustand & Ziel
+
+### Ist-Zustand (Bug, Stand: Prüfung des echten Codes)
+- Ein einziges globales Feld `_apiKey: MutableStateFlow<String>` in
+  `AgentViewModel.kt` für ALLE Cloud-Provider zusammen (OpenRouter UND
+  OpenCode Zen teilen sich denselben Wert).
+- Kein Ollama-API-Key-Feld (Cloud-Modus nicht bedienbar, obwohl
+  `AIProviderService.callOllama()` den Header bereits unterstützt).
+- **Keine Persistenz.** Weder SharedPreferences noch DataStore (obwohl
+  als Dependency vorhanden) noch Room werden genutzt. Bei App-Neustart
+  bzw. Prozess-Kill durch Android ist jeder eingegebene Key weg.
+
+### Ziel-Architektur
+- Jetpack DataStore (Preferences) als Speicher, EIN Key pro Provider:
+  - `openrouter_api_key`
+  - `opencode_zen_api_key`
+  - `ollama_base_url` (Default: `http://127.0.0.1:11434`)
+  - `ollama_api_key` (optional, nur für Ollama-Cloud-Modus)
+- Neue Klasse `ProviderCredentialsRepository` (in `data/`), kapselt
+  DataStore-Zugriff, stellt `Flow<ProviderCredentials>` bereit sowie
+  `suspend fun update...()`-Funktionen pro Feld.
+- `AgentViewModel` bezieht Zugangsdaten aus diesem Repository statt
+  eigener `MutableStateFlow<String>`-Felder.
+- `AgentRepository.chat()` / `AIProviderService.sendMessage()` wählen
+  anhand von `agent.provider` das passende Credential aus dem
+  Repository aus, statt einen einzigen global übergebenen `apiKey`-
+  Parameter zu erwarten.

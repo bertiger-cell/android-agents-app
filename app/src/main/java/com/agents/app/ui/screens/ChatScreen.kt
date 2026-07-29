@@ -22,14 +22,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    agent: Agent,
     session: ChatSessionEntity,
+    agent: Agent,
     messages: List<Message>,
     isLoading: Boolean,
-    credentialsAvailable: Boolean,
-    onSettings: () -> Unit = {},
     onSendMessage: (String) -> Unit,
     onNavigateBack: () -> Unit,
+    onSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -53,15 +52,15 @@ fun ChatScreen(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = agent.name,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary
+                            agent.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "SchlieBen")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -75,20 +74,6 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (!credentialsAvailable) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.errorContainer
-                ) {
-                    Text(
-                        text = "No credentials configured. Open Settings to add provider credentials.",
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-            }
-
             LazyColumn(
                 state = listState,
                 modifier = Modifier
@@ -112,7 +97,7 @@ fun ChatScreen(
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Thinking...",
+                                "Thinking...",
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }

@@ -1,9 +1,11 @@
 package com.agents.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -20,7 +22,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.agents.app.models.ProjectEntity
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +32,7 @@ fun ProjectListScreen(
     onProjectSelected: (ProjectEntity) -> Unit,
     onCreateProject: (name: String, description: String) -> Unit,
     onDeleteProject: (ProjectEntity) -> Unit,
-    onSettings: () -> Unit,
+    onSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -49,12 +52,16 @@ fun ProjectListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateDialog = true }) {
+            FloatingActionButton(
+                onClick = { showCreateDialog = true },
+                modifier = Modifier.padding(16.dp)
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "Neues Projekt")
             }
         }
     ) { padding ->
         if (projects.isEmpty()) {
+            // Empty State
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -82,11 +89,14 @@ fun ProjectListScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = { showCreateDialog = true }) {
+                Button(
+                    onClick = { showCreateDialog = true }
+                ) {
                     Text("Projekt erstellen")
                 }
             }
         } else {
+            // Project List
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -105,6 +115,7 @@ fun ProjectListScreen(
         }
     }
 
+    // Create Project Dialog
     if (showCreateDialog) {
         CreateProjectDialog(
             onDismiss = { showCreateDialog = false },
@@ -155,13 +166,15 @@ fun ProjectCard(
                         )
                     }
                 }
-                // Farbpunkt
-                Surface(
+                // Farbpunkt (Projekt-Farbe)
+                Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .padding(4.dp),
-                    shape = MaterialTheme.shapes.small,
-                    color = try { Color(android.graphics.Color.parseColor(project.color)) } catch (_: Exception) { MaterialTheme.colorScheme.primary }
+                        .padding(4.dp)
+                        .background(
+                            Color(android.graphics.Color.parseColor(project.color)),
+                            CircleShape
+                        )
                 )
             }
             Row(
@@ -175,7 +188,7 @@ fun ProjectCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 IconButton(
-                    onClick = onDelete,
+                    onClick = { onDelete() },
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
@@ -189,6 +202,7 @@ fun ProjectCard(
         }
     }
 }
+
 
 @Composable
 fun CreateProjectDialog(
@@ -222,7 +236,7 @@ fun CreateProjectDialog(
             Button(
                 onClick = {
                     if (projectName.isNotBlank()) {
-                        onCreate(projectName.trim(), projectDescription.trim())
+                        onCreate(projectName, projectDescription)
                     }
                 },
                 enabled = projectName.isNotBlank()
@@ -238,7 +252,7 @@ fun CreateProjectDialog(
     )
 }
 
-fun formatDate(timestamp: Long): String {
+private fun formatDate(timestamp: Long): String {
     val sdf = SimpleDateFormat("dd.MM.yyyy", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
