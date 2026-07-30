@@ -12,10 +12,19 @@ import com.agents.app.data.ProviderCredentials
 import com.agents.app.data.ProviderCredentialsRepository
 import com.agents.app.models.*
 import com.agents.app.data.ProjectFileWriter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.UUID
+
+data class ProjectFileInfo(
+    val name: String,
+    val content: String,
+    val isMarkdown: Boolean
+)
 
 class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AgentRepository
@@ -231,6 +240,37 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             val session = createArchitectDiscoverySession(projectId)
             _selectedSession.value = session
         }
+    }
+
+    // ===== PROJECT FILES =====
+
+    fun getProjectFiles(projectId: String, onResult: (List<ProjectFileInfo>) -> Unit) {
+        viewModelScope.launch {
+            val files = withContext(Dispatchers.IO) {
+                val projectPath = resolveProjectPath(projectId)
+                val dir = File(projectPath)
+                if (!dir.exists()) return@withContext emptyList()
+
+                dir.listFiles()
+                    ?.filter { it.isFile && (it.name.endsWith(".md") || it.name.endsWith(".json")) }
+                    ?.sortedBy { it.name }
+                    ?.map { file ->
+                        ProjectFileInfo(
+                            name = file.name,
+                            content = file.readText(),
+                            isMarkdown = file.name.endsWith(".md")
+                        )
+                    } ?: emptyList()
+            }
+            onResult(files)
+        }
+    }
+
+    private fun resolveProjectPath(projectId: String): String {
+        val projectFolder = File(getApplication<AgentsApplication>().filesDir, "projects")
+        val projects = projectFolder.listFiles() ?: emptyArray()
+        val projectDir = projects.firstOrNull { it.isDirectory && it.name.endsWith("_$projectId") }
+        return projectDir?.absolutePath ?: "$projectFolder/project_$projectId"
     }
 
     // ===== ARCHITECT AGENT =====

@@ -5,13 +5,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SmartToy
@@ -21,10 +24,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontFamily
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.unit.dp
 import com.agents.app.models.Agent
 import com.agents.app.models.ChatSessionEntity
 import com.agents.app.models.ProjectEntity
+import com.agents.app.ui.ProjectFileInfo
 import java.text.SimpleDateFormat
 import java.util.Locale
 
@@ -90,6 +96,11 @@ fun ProjectDetailWithTabsScreen(
                     onClick = { selectedTabIndex = 1 },
                     text = { Text("Sessions") }
                 )
+                Tab(
+                    selected = selectedTabIndex == 2,
+                    onClick = { selectedTabIndex = 2 },
+                    text = { Text("Dateien") }
+                )
             }
 
             when (selectedTabIndex) {
@@ -109,6 +120,9 @@ fun ProjectDetailWithTabsScreen(
                     onSessionSelected = { session ->
                         onSessionSelected(session)
                     }
+                )
+                2 -> ProjectFilesTab(
+                    project = project
                 )
             }
         }
@@ -469,6 +483,139 @@ fun ChatModalPlaceholder(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun ProjectFilesTab(
+    project: ProjectEntity,
+    modifier: Modifier = Modifier
+) {
+    val viewModel: com.agents.app.ui.AgentViewModel = viewModel()
+    var files by remember { mutableStateOf<List<ProjectFileInfo>>(emptyList()) }
+    var selectedFile by remember { mutableStateOf<ProjectFileInfo?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(project.id) {
+        isLoading = true
+        viewModel.getProjectFiles(project.id) { result ->
+            files = result
+            isLoading = false
+        }
+    }
+
+    if (isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else if (files.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Filled.Description,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Keine Dateien gefunden",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    "Fuehre zuerst den Architect-Discovery durch.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(files) { file ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { selectedFile = file },
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (file.isMarkdown) Icons.Filled.Description else Icons.Filled.Description,
+                            contentDescription = null,
+                            tint = if (file.isMarkdown) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            file.name,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // File Content Dialog
+    if (selectedFile != null) {
+        AlertDialog(
+            onDismissRequest = { selectedFile = null },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (selectedFile!!.isMarkdown) Icons.Filled.Description else Icons.Filled.Description,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(selectedFile!!.name)
+                }
+            },
+            text = {
+                rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 400.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = selectedFile!!.content,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedFile = null }) {
+                    Text("Schliessen")
+                }
+            }
+        )
     }
 }
 
