@@ -55,3 +55,14 @@ Verfügt über folgende analytische Skills:
 Gelegentlich prüfen, ob die Regeln wirklich geladen wurden mit:
 "Fasse die aktuell geltenden Projektregeln zusammen." Die Antwort
 sollte Build-Befehle und die Kernregeln oben nennen.
+
+## Architect Agent Skill (v3)
+
+Siehe SKILLS_ARCHITECT.md für die vollständige Dokumentation.
+
+Der Architect Agent ist KEIN permanenter Agent, sondern ein Discovery-Workflow:
+- Automatischer Start bei neuer Projekt-Erstellung
+- 3-Phasen-Interview (Warm-Up, Interview, Generierung)
+- Generiert ARCHITECTURE.md, ROADMAP.md, RULES.md, AGENTS.md
+- Erstellt spezialisierte Agenten aus suggested_agents
+- Edtierbarer System Prompt in den Settings
