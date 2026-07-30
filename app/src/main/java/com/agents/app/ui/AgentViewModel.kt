@@ -210,6 +210,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         _agents.value = _agents.value + architect
         return architect
 
+    }
     suspend fun createArchitectDiscoverySession(projectId: String): ChatSessionEntity {
         val architect = createOrGetArchitectAgent(projectId)
 
