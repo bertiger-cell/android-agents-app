@@ -153,6 +153,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 onDeleteAgent = { agent ->
                     viewModel.deleteAgent(agent)
                 },
+                onRestartArchitectDiscovery = {
+                    viewModel.restartArchitectDiscovery(projectId)
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }

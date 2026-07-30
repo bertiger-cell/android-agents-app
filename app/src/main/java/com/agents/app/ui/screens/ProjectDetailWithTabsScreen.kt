@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -36,6 +37,7 @@ fun ProjectDetailWithTabsScreen(
     onSessionSelected: (ChatSessionEntity) -> Unit,
     onNewChat: (Agent) -> Unit = {},
     onDeleteAgent: (Agent) -> Unit = {},
+    onRestartArchitectDiscovery: () -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
@@ -163,6 +165,12 @@ fun AgentsTab(
             Button(onClick = onCreateAgent) {
                 Text("Agent erstellen")
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(onClick = onRestartArchitectDiscovery) {
+                Icon(Icons.Filled.Refresh, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Discovery wiederholen")
+            }
         }
     } else {
         LazyColumn(
@@ -187,6 +195,14 @@ fun AgentsTab(
                     Icon(Icons.Filled.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Agent hinzufugen")
+                }
+                OutlinedButton(
+                    onClick = onRestartArchitectDiscovery,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Filled.Refresh, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Discovery wiederholen")
                 }
             }
         }

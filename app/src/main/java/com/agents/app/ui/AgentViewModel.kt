@@ -213,6 +213,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun restartArchitectDiscovery(projectId: String) {
+        viewModelScope.launch {
+            val session = createArchitectDiscoverySession(projectId)
+            _selectedSession.value = session
+        }
+    }
+
     // ===== ARCHITECT AGENT =====
 
     suspend fun createOrGetArchitectAgent(projectId: String): Agent {
