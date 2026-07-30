@@ -110,8 +110,7 @@ fun ProjectListScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Deine AI-gestuetzte Plattform fuer Projekt-Entwicklung.
-" +
+                                "Deine AI-gestuetzte Plattform fuer Projekt-Entwicklung.\n" +
                                 "Starte mit einem Architect-Interview, um dein Projekt zu planen.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
