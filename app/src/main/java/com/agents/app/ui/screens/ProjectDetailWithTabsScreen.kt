@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,9 +35,11 @@ fun ProjectDetailWithTabsScreen(
     onCreateAgent: () -> Unit,
     onSessionSelected: (ChatSessionEntity) -> Unit,
     onNewChat: (Agent) -> Unit = {},
+    onDeleteAgent: (Agent) -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
+    var deleteConfirmAgent by remember { mutableStateOf<Agent?>(null) }
     // Chat-Modal handled via AppNavigation Dialog
     // Chat-Modal handled via AppNavigation Dialog
 
@@ -87,6 +90,7 @@ fun ProjectDetailWithTabsScreen(
                         onSessionSelected(session)
                     },
                     onNewChat = onNewChat,
+                    onDeleteAgent = onDeleteAgent,
                     onCreateAgent = onCreateAgent
                 )
                 1 -> SessionsTab(
@@ -98,6 +102,36 @@ fun ProjectDetailWithTabsScreen(
             }
         }
     }
+
+    // Delete Confirmation Dialog for Agent
+    if (deleteConfirmAgent != null) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirmAgent = null },
+            title = { Text("Agent loschen?") },
+            text = {
+                Text("Bist du sicher, dass du den Agenten '${deleteConfirmAgent!!.name}' loschen moechtest?\n\n" +
+                     "Alle zugehoerigen Sessions und Nachrichten werden ebenfalls geloescht.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteAgent(deleteConfirmAgent!!)
+                        deleteConfirmAgent = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Loschen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmAgent = null }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -106,6 +140,7 @@ fun AgentsTab(
     sessions: Map<String, List<ChatSessionEntity>>,
     onSessionSelected: (ChatSessionEntity) -> Unit,
     onNewChat: (Agent) -> Unit = {},
+    onDeleteAgent: (Agent) -> Unit = {},
     onCreateAgent: () -> Unit
 ) {
     if (agents.isEmpty()) {
@@ -206,7 +241,8 @@ fun AgentCardWithSessions(
     agent: Agent,
     agentSessions: List<ChatSessionEntity>,
     onSessionSelected: (ChatSessionEntity) -> Unit,
-    onNewChat: (Agent) -> Unit = {}
+    onNewChat: (Agent) -> Unit = {},
+    onDeleteAgent: (Agent) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -217,11 +253,28 @@ fun AgentCardWithSessions(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(agent.name, style = MaterialTheme.typography.titleMedium)
-            Text(
-                "${agent.provider.name}  ${agent.model}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "${agent.provider.name}  ${agent.model}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                IconButton(
+                    onClick = { deleteConfirmAgent = agent },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = "Agent loschen",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
 
             if (agentSessions.isNotEmpty()) {
                 Divider(modifier = Modifier.padding(vertical = 12.dp))

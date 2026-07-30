@@ -37,6 +37,7 @@ fun ProjectListScreen(
     modifier: Modifier = Modifier
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var deleteConfirmProject by remember { mutableStateOf<ProjectEntity?>(null) }
 
     Scaffold(
         topBar = {
@@ -109,11 +110,41 @@ fun ProjectListScreen(
                     ProjectCard(
                         project = project,
                         onSelected = { onProjectSelected(project) },
-                        onDelete = { onDeleteProject(project) }
+                        onDelete = { deleteConfirmProject = project }
                     )
                 }
             }
         }
+    }
+
+    // Delete Confirmation Dialog
+    if (deleteConfirmProject != null) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirmProject = null },
+            title = { Text("Projekt loschen?") },
+            text = {
+                Text("Bist du sicher, dass du '${deleteConfirmProject!!.name}' loschen moechtest?\n\n" +
+                     "Alle zugehoerigen Agenten, Sessions und Nachrichten werden ebenfalls geloescht.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteProject(deleteConfirmProject!!)
+                        deleteConfirmProject = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Loschen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmProject = null }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
     }
 
     // Create Project Dialog

@@ -150,6 +150,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 onNewChat = { agent ->
                     viewModel.startChat(agent.id)
                 },
+                onDeleteAgent = { agent ->
+                    viewModel.deleteAgent(agent)
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }
