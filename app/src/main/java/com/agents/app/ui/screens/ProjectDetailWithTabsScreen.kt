@@ -92,7 +92,8 @@ fun ProjectDetailWithTabsScreen(
                         onSessionSelected(session)
                     },
                     onNewChat = onNewChat,
-                    onDeleteAgent = onDeleteAgent,
+                    onDeleteAgent = { agent -> deleteConfirmAgent = agent },
+                    onRestartArchitectDiscovery = onRestartArchitectDiscovery,
                     onCreateAgent = onCreateAgent
                 )
                 1 -> SessionsTab(
@@ -143,6 +144,7 @@ fun AgentsTab(
     onSessionSelected: (ChatSessionEntity) -> Unit,
     onNewChat: (Agent) -> Unit = {},
     onDeleteAgent: (Agent) -> Unit = {},
+    onRestartArchitectDiscovery: () -> Unit = {},
     onCreateAgent: () -> Unit
 ) {
     if (agents.isEmpty()) {
@@ -280,7 +282,7 @@ fun AgentCardWithSessions(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 IconButton(
-                    onClick = { deleteConfirmAgent = agent },
+                    onClick = { onDeleteAgent(agent) },
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(
