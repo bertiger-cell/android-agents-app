@@ -12,10 +12,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import com.agents.app.models.ProjectEntity
 import com.agents.app.models.AgentSpec
 import com.agents.app.ui.AgentViewModel
 import com.agents.app.ui.screens.*
+import android.widget.Toast
 import kotlinx.coroutines.launch
 
 @Composable
@@ -36,6 +41,45 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val isOllamaTesting by viewModel.isOllamaTesting.collectAsState()
     val projectScaffold by viewModel.projectScaffold.collectAsState()
     val showArchitectSummary by viewModel.showArchitectSummary.collectAsState()
+    val isGeneratingFiles by viewModel.isGeneratingFiles.collectAsState()
+
+    // Generation-Complete Event: Toast bei Erfolg/Fehler
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.generationComplete.collect { success ->
+            if (success) {
+                Toast.makeText(context, "Projekt-Dateien erstellt und Agenten angelegt", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(context, "Fehler bei der Generierung. Bitte Logs pruefen.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // Loading-Overlay waehrend Datei-Generierung
+    if (isGeneratingFiles) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background.copy(alpha = 0.7f)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                ) {
+                    CircularProgressIndicator()
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(16.dp))
+                    Text(
+                        "Erstelle Projekt-Dateien...",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                }
+            }
+        }
+    }
     val availableOllamaModels by viewModel.availableOllamaModels.collectAsState()
     val availableOpenRouterModels by viewModel.availableOpenRouterModels.collectAsState()
     val availableZenModels by viewModel.availableZenModels.collectAsState()

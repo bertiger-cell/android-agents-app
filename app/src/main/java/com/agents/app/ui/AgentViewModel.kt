@@ -47,6 +47,13 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _isGeneratingFiles = MutableStateFlow(false)
+    val isGeneratingFiles: StateFlow<Boolean> = _isGeneratingFiles.asStateFlow()
+
+    // Event: wird 1x emitted wenn createAgentsFromScaffold fertig ist
+    private val _generationComplete = MutableSharedFlow<Boolean>(extraBufferCapacity = 1)
+    val generationComplete: SharedFlow<Boolean> = _generationComplete.asSharedFlow()
+
     // ===== Current Session =====
     private val _selectedSession = MutableStateFlow<ChatSessionEntity?>(null)
     val selectedSession: StateFlow<ChatSessionEntity?> = _selectedSession.asStateFlow()
@@ -289,40 +296,49 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun createAgentsFromScaffold(projectId: String, scaffold: ProjectScaffold) {
         viewModelScope.launch {
-            // 1. Project-Daten laden
-            val project = repository.getProjectById(projectId) ?: return@launch
+            _isGeneratingFiles.value = true
 
-            // 2. Projekt-Dateien schreiben
-            val fileWriter = ProjectFileWriter(getApplication())
-            fileWriter.writeProjectFiles(projectId, project.name, scaffold)
+            try {
+                // 1. Project-Daten laden
+                val project = repository.getProjectById(projectId) ?: return@launch
 
-            // 3. Agenten aus suggestedAgents erstellen
-            scaffold.suggestedAgents.forEach { agentSpec ->
-                val providerEnum = try {
-                    AIProvider.valueOf(agentSpec.provider.uppercase())
-                } catch (e: IllegalArgumentException) {
-                    AIProvider.OPENROUTER
+                // 2. Projekt-Dateien schreiben
+                val fileWriter = ProjectFileWriter(getApplication())
+                fileWriter.writeProjectFiles(projectId, project.name, scaffold)
+
+                // 3. Agenten aus suggestedAgents erstellen
+                scaffold.suggestedAgents.forEach { agentSpec ->
+                    val providerEnum = try {
+                        AIProvider.valueOf(agentSpec.provider.uppercase())
+                    } catch (e: IllegalArgumentException) {
+                        AIProvider.OPENROUTER
+                    }
+
+                    repository.createAgent(
+                        projectId = projectId,
+                        name = agentSpec.name,
+                        description = agentSpec.description,
+                        provider = providerEnum,
+                        systemPrompt = agentSpec.systemPrompt,
+                        model = agentSpec.model,
+                        temperature = agentSpec.temperature
+                    )
                 }
 
-                repository.createAgent(
-                    projectId = projectId,
-                    name = agentSpec.name,
-                    description = agentSpec.description,
-                    provider = providerEnum,
-                    systemPrompt = agentSpec.systemPrompt,
-                    model = agentSpec.model,
-                    temperature = agentSpec.temperature
-                )
+                // 4. Agents verladen (selektiertes Projekt)
+                selectProject(project)
+
+                Log.d("AgentViewModel", "createAgentsFromScaffold: ${scaffold.suggestedAgents.size} Agenten erstellt")
+
+                _generationComplete.tryEmit(true)
+            } catch (e: Exception) {
+                Log.e("AgentViewModel", "createAgentsFromScaffold failed", e)
+                _generationComplete.tryEmit(false)
+            } finally {
+                _isGeneratingFiles.value = false
+                // 5. Summary schliessen (auch bei Fehler)
+                resetArchitectSummary()
             }
-
-            // 4. Agents verladen (selektiertes Projekt)
-            // agentsJob refresh durch selectProject ausloesen
-            selectProject(project)
-
-            // 5. Summary schliessen
-            resetArchitectSummary()
-
-            Log.d("AgentViewModel", "createAgentsFromScaffold: ${scaffold.suggestedAgents.size} Agenten erstellt")
         }
     }
 
