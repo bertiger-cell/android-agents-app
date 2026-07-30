@@ -1,14 +1,19 @@
 package com.agents.app.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -21,6 +26,8 @@ fun SettingsScreen(
     credentials: ProviderCredentials,
     ollamaTestMessage: String?,
     isOllamaTesting: Boolean,
+    architectSystemPrompt: String,
+    onUpdateArchitectSystemPrompt: (String) -> Unit,
     onUpdateOpenRouterKey: (String) -> Unit,
     onUpdateZenKey: (String) -> Unit,
     onUpdateOllamaBaseUrl: (String) -> Unit,
@@ -36,12 +43,18 @@ fun SettingsScreen(
     var zenKey by remember { mutableStateOf(credentials.zenKey) }
     var ollamaBaseUrl by remember { mutableStateOf(credentials.ollamaBaseUrl) }
     var ollamaApiKey by remember { mutableStateOf(credentials.ollamaApiKey) }
+    var isArchitectExpanded by remember { mutableStateOf(false) }
+    var editedArchitectPrompt by remember { mutableStateOf(architectSystemPrompt) }
 
     LaunchedEffect(credentials) {
         openRouterKey = credentials.openRouterKey
         zenKey = credentials.zenKey
         ollamaBaseUrl = credentials.ollamaBaseUrl
         ollamaApiKey = credentials.ollamaApiKey
+    }
+
+    LaunchedEffect(architectSystemPrompt) {
+        editedArchitectPrompt = architectSystemPrompt
     }
 
     Scaffold(
@@ -146,6 +159,89 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Divider()
+
+            // ===== ARCHITECT SETTINGS =====
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { isArchitectExpanded = !isArchitectExpanded },
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Architect Agent System Prompt",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Icon(
+                            if (isArchitectExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    if (isArchitectExpanded) {
+                        Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+                        OutlinedTextField(
+                            value = editedArchitectPrompt,
+                            onValueChange = { editedArchitectPrompt = it },
+                            label = { Text("System Prompt") },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 200.dp),
+                            minLines = 8,
+                            maxLines = 20
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    onUpdateArchitectSystemPrompt(editedArchitectPrompt)
+                                    isArchitectExpanded = false
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Speichern")
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    editedArchitectPrompt = architectSystemPrompt
+                                    isArchitectExpanded = false
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Abbrechen")
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            "Der Architect-Prompt bestimmt die Qualitaet der " +
+                            "Projekt-Discovery. Experimentiere, um bessere Plaene zu bekommen.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
             Divider()
 
             Button(
