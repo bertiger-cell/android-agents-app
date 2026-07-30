@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.agents.app.models.ProjectEntity
 import com.agents.app.models.AgentSpec
 import com.agents.app.ui.AgentViewModel
