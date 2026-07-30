@@ -286,6 +286,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     fun updateAutoSummaryEnabled(enabled: Boolean) {
         _isAutoSummaryEnabled.value = enabled
     }
+    // TODO Task 8e: create agents from scaffold
+    fun createAgentsFromScaffold(projectId: String, scaffold: ProjectScaffold) {
+        // Placeholder - wird in Task 8e implementiert
+    }
+
 
 
     // ===== SESSION MANAGEMENT =====

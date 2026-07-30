@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import com.agents.app.models.ProjectEntity
+import com.agents.app.models.AgentSpec
 import com.agents.app.ui.AgentViewModel
 import com.agents.app.ui.screens.*
 import kotlinx.coroutines.launch
@@ -33,6 +34,8 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val credentials by viewModel.credentials.collectAsState()
     val ollamaTestMessage by viewModel.ollamaTestMessage.collectAsState()
     val isOllamaTesting by viewModel.isOllamaTesting.collectAsState()
+    val projectScaffold by viewModel.projectScaffold.collectAsState()
+    val showArchitectSummary by viewModel.showArchitectSummary.collectAsState()
     val availableOllamaModels by viewModel.availableOllamaModels.collectAsState()
     val availableOpenRouterModels by viewModel.availableOpenRouterModels.collectAsState()
     val availableZenModels by viewModel.availableZenModels.collectAsState()
@@ -204,5 +207,38 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
             }
         }
     }
+    // ===== ARCHITECT SUMMARY MODAL =====
+    if (showArchitectSummary && projectScaffold != null) {
+        ArchitectSummaryScreen(
+            scaffold = projectScaffold!!,
+            onConfirm = { updatedAgents ->
+                val updatedScaffold = projectScaffold!!.copy(
+                    suggestedAgents = updatedAgents.map { edited ->
+                        AgentSpec(
+                            name = edited.name,
+                            description = edited.description,
+                            systemPrompt = edited.systemPrompt,
+                            provider = edited.provider,
+                            model = edited.model,
+                            temperature = edited.temperature
+                        )
+                    }
+                )
+
+                // Task 8e/8f triggern
+                viewModel.createAgentsFromScaffold(
+                    projectId = selectedProject!!.id,
+                    scaffold = updatedScaffold
+                )
+
+                // Summary schließen
+                viewModel.resetArchitectSummary()
+            },
+            onDismiss = {
+                viewModel.resetArchitectSummary()
+            }
+        )
+    }
+
     }  // Box close
 }
