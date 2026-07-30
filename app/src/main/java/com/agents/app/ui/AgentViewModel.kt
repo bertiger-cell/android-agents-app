@@ -83,7 +83,17 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             DEFAULT_ARCHITECT_PROMPT
         )
 
+    // ===== Architect Discovery State =====
+    private val _projectScaffold = MutableStateFlow<ProjectScaffold?>(null)
+    val projectScaffold: StateFlow<ProjectScaffold?> = _projectScaffold.asStateFlow()
+
+    private val _isAutoSummaryEnabled = MutableStateFlow(true)
+    val isAutoSummaryEnabled: StateFlow<Boolean> = _isAutoSummaryEnabled.asStateFlow()
+
+    private val _showArchitectSummary = MutableStateFlow(false)
+    val showArchitectSummary: StateFlow<Boolean> = _showArchitectSummary.asStateFlow()
     init {
+ 
         val app = application as AgentsApplication
         repository = AgentRepository(app.database, app)
 
@@ -238,6 +248,45 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
         return session
     }
+    // ===== ARCHITECT DISCOVERY PARSING =====
+
+    suspend fun extractAndParseArchitectJSON(
+        projectId: String,
+        architectMessage: String
+    ) {
+        // Robustes JSON-Extraktion: ersten { und letzten } finden
+        val start = architectMessage.indexOf('{')
+        val end = architectMessage.lastIndexOf('}')
+        if (start < 0 || end <= start) {
+            Log.w("ArchitectJSON", "Kein JSON im Architect-Output gefunden")
+            return
+        }
+
+        val jsonString = architectMessage.substring(start..end)
+
+        // Speichern und parsen
+        val scaffold = repository.saveProjectScaffold(projectId, jsonString)
+
+        if (scaffold != null) {
+            _projectScaffold.value = scaffold
+
+            // Auto-Summary Entscheidung
+            if (_isAutoSummaryEnabled.value) {
+                _showArchitectSummary.value = true
+            }
+        } else {
+            Log.e("ArchitectJSON", "JSON-Parsing fehlgeschlagen")
+        }
+    }
+
+    fun resetArchitectSummary() {
+        _showArchitectSummary.value = false
+    }
+
+    fun updateAutoSummaryEnabled(enabled: Boolean) {
+        _isAutoSummaryEnabled.value = enabled
+    }
+
 
     // ===== SESSION MANAGEMENT =====
 

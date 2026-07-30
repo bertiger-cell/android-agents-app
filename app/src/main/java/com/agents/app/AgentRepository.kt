@@ -12,6 +12,11 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
+
+import android.util.Log
+ 
+import org.json.JSONArray
+import org.json.JSONObject
 class AgentRepository(
     private val database: AgentDatabase,
     private val context: Context
@@ -280,6 +285,81 @@ class AgentRepository(
             val title = result.output.trim().removeSurrounding("\"").removeSurrounding("'")
             val session = chatSessionDao.getSessionById(sessionId) ?: return
             chatSessionDao.updateSession(session.copy(title = title))
+        }
+    }
+
+    suspend fun saveProjectScaffold(projectId: String, scaffoldJson: String): ProjectScaffold? {
+        return try {
+            // 1. Project aus DB holen für folderPath
+            val project = projectDao.getProjectById(projectId) ?: return null
+            val discoveryFile = File(project.folderPath, "discovery.json")
+
+            // 2. Parse JSON (robust)
+            val jsonObject = JSONObject(scaffoldJson)
+
+            // 3. Extract Discovery Context
+            val discoveryObj = jsonObject.optJSONObject("discovery_context") ?: JSONObject()
+            val discovery = ProjectDiscovery(
+                projectId = projectId,
+                domain = discoveryObj.optString("domain", ""),
+                technologies = discoveryObj.optJSONArray("technologies")?.let { arr ->
+                    (0 until arr.length()).map { arr.getString(it) }
+                } ?: emptyList(),
+                experienceLevel = discoveryObj.optString("experience_level", ""),
+                projectSize = discoveryObj.optString("project_size", ""),
+                concerns = discoveryObj.optJSONArray("concerns")?.let { arr ->
+                    (0 until arr.length()).map { arr.getString(it) }
+                } ?: emptyList()
+            )
+
+            // 4. Extract Phases
+            val phasesArr = jsonObject.optJSONArray("phases") ?: return null
+            val phases = (0 until phasesArr.length()).map { i ->
+                val phase = phasesArr.getJSONObject(i)
+                ScaffoldPhase(
+                    phaseNumber = phase.optInt("phase_number", i + 1),
+                    name = phase.optString("name", ""),
+                    description = phase.optString("description", ""),
+                    duration = phase.optString("duration", ""),
+                    focus = phase.optString("focus", "")
+                )
+            }
+
+            // 5. Extract Rules
+            val rulesArr = jsonObject.optJSONArray("rules") ?: JSONArray()
+            val rules = (0 until rulesArr.length()).map { rulesArr.getString(it) }
+
+            // 6. Extract Suggested Agents
+            val agentsArr = jsonObject.optJSONArray("suggested_agents") ?: JSONArray()
+            val agents = (0 until agentsArr.length()).map { i ->
+                val agent = agentsArr.getJSONObject(i)
+                AgentSpec(
+                    name = agent.optString("name", "Agent ${i + 1}"),
+                    description = agent.optString("description", ""),
+                    systemPrompt = agent.optString("system_prompt", ""),
+                    provider = agent.optString("provider", "openrouter"),
+                    model = agent.optString("model", "gpt-4o"),
+                    temperature = agent.optDouble("temperature", 0.7).toFloat()
+                )
+            }
+
+            // 7. Build ProjectScaffold
+            val scaffold = ProjectScaffold(
+                discoveryContext = discovery,
+                architecture = jsonObject.optString("architecture", ""),
+                phases = phases,
+                rules = rules,
+                suggestedAgents = agents,
+                diaryEntry = jsonObject.optString("diary_entry", "")
+            )
+
+            // 8. Original JSON in Project-Ordner speichern
+            discoveryFile.writeText(scaffoldJson)
+
+            scaffold
+        } catch (e: Exception) {
+            Log.e("ArchitectJSON", "Fehler beim Parsen: ${e.message}")
+            null
         }
     }
 }
