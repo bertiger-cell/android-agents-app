@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.map
 private val Context.architectDataStore by preferencesDataStore(name = "architect_config")
 
 private val ARCHITECT_SYSTEM_PROMPT = stringPreferencesKey("architect_system_prompt")
+private val ARCHITECT_PROVIDER = stringPreferencesKey("architect_provider")
+private val ARCHITECT_MODEL = stringPreferencesKey("architect_model")
 
 class ArchitectConfigRepository(private val context: Context) {
 
@@ -19,9 +21,31 @@ class ArchitectConfigRepository(private val context: Context) {
             prefs[ARCHITECT_SYSTEM_PROMPT] ?: DEFAULT_ARCHITECT_PROMPT
         }
 
+    val architectProvider: Flow<String> = context.architectDataStore.data
+        .map { prefs ->
+            prefs[ARCHITECT_PROVIDER] ?: "openrouter"
+        }
+
+    val architectModel: Flow<String> = context.architectDataStore.data
+        .map { prefs ->
+            prefs[ARCHITECT_MODEL] ?: "gpt-4o"
+        }
+
     suspend fun updateArchitectSystemPrompt(newPrompt: String) {
         context.architectDataStore.edit { prefs ->
             prefs[ARCHITECT_SYSTEM_PROMPT] = newPrompt
+        }
+    }
+
+    suspend fun updateArchitectProvider(provider: String) {
+        context.architectDataStore.edit { prefs ->
+            prefs[ARCHITECT_PROVIDER] = provider
+        }
+    }
+
+    suspend fun updateArchitectModel(model: String) {
+        context.architectDataStore.edit { prefs ->
+            prefs[ARCHITECT_MODEL] = model
         }
     }
 

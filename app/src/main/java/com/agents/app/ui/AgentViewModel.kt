@@ -91,6 +91,20 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             DEFAULT_ARCHITECT_PROMPT
         )
 
+    val architectProvider: StateFlow<String> =
+        architectConfigRepository.architectProvider.stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            "openrouter"
+        )
+
+    val architectModel: StateFlow<String> =
+        architectConfigRepository.architectModel.stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            "gpt-4o"
+        )
+
     // ===== Architect Discovery State =====
     private val _projectScaffold = MutableStateFlow<ProjectScaffold?>(null)
     val projectScaffold: StateFlow<ProjectScaffold?> = _projectScaffold.asStateFlow()
@@ -208,14 +222,21 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         if (existing != null) return existing
 
         val customPrompt = architectConfigRepository.architectSystemPrompt.first()
+        val providerStr = architectConfigRepository.architectProvider.first()
+        val modelStr = architectConfigRepository.architectModel.first()
+        val providerEnum = try {
+            AIProvider.valueOf(providerStr.uppercase())
+        } catch (e: IllegalArgumentException) {
+            AIProvider.OPENROUTER
+        }
         // Let repository create the agent (handles UUID internally)
         repository.createAgent(
             projectId = projectId,
             name = "Architect",
             description = "Project Discovery & Planning Agent",
-            provider = AIProvider.OPENROUTER,
+            provider = providerEnum,
             systemPrompt = customPrompt,
-            model = "gpt-4o",
+            model = modelStr,
             temperature = 0.7f
         )
 
