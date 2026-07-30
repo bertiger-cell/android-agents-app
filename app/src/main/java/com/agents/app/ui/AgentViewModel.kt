@@ -14,6 +14,7 @@ import com.agents.app.models.*
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AgentRepository
