@@ -81,6 +81,8 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val availableOpenRouterModels by viewModel.availableOpenRouterModels.collectAsState()
     val availableZenModels by viewModel.availableZenModels.collectAsState()
     val architectSystemPrompt by viewModel.architectSystemPrompt.collectAsState()
+    val architectProvider by viewModel.architectProvider.collectAsState()
+    val architectModel by viewModel.architectModel.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
@@ -203,6 +205,10 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 isOllamaTesting = isOllamaTesting,
                 architectSystemPrompt = architectSystemPrompt,
                 onUpdateArchitectSystemPrompt = { viewModel.updateArchitectSystemPrompt(it) },
+                architectProvider = architectProvider,
+                onUpdateArchitectProvider = { viewModel.updateArchitectProvider(it) },
+                architectModel = architectModel,
+                onUpdateArchitectModel = { viewModel.updateArchitectModel(it) },
                 onUpdateOpenRouterKey = { viewModel.updateOpenRouterKey(it) },
                 onUpdateZenKey = { viewModel.updateZenKey(it) },
                 onUpdateOllamaBaseUrl = { viewModel.updateOllamaBaseUrl(it) },

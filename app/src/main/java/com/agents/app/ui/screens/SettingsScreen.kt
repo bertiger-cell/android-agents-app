@@ -28,6 +28,10 @@ fun SettingsScreen(
     isOllamaTesting: Boolean,
     architectSystemPrompt: String,
     onUpdateArchitectSystemPrompt: (String) -> Unit,
+    architectProvider: String,
+    onUpdateArchitectProvider: (String) -> Unit,
+    architectModel: String,
+    onUpdateArchitectModel: (String) -> Unit,
     onUpdateOpenRouterKey: (String) -> Unit,
     onUpdateZenKey: (String) -> Unit,
     onUpdateOllamaBaseUrl: (String) -> Unit,
@@ -45,6 +49,8 @@ fun SettingsScreen(
     var ollamaApiKey by remember { mutableStateOf(credentials.ollamaApiKey) }
     var isArchitectExpanded by remember { mutableStateOf(false) }
     var editedArchitectPrompt by remember { mutableStateOf(architectSystemPrompt) }
+    var editedArchitectProvider by remember { mutableStateOf(architectProvider) }
+    var editedArchitectModel by remember { mutableStateOf(architectModel) }
 
     LaunchedEffect(credentials) {
         openRouterKey = credentials.openRouterKey
@@ -55,6 +61,14 @@ fun SettingsScreen(
 
     LaunchedEffect(architectSystemPrompt) {
         editedArchitectPrompt = architectSystemPrompt
+    }
+
+    LaunchedEffect(architectProvider) {
+        editedArchitectProvider = architectProvider
+    }
+
+    LaunchedEffect(architectModel) {
+        editedArchitectModel = architectModel
     }
 
     Scaffold(
@@ -192,6 +206,56 @@ fun SettingsScreen(
                     if (isArchitectExpanded) {
                         Divider(modifier = Modifier.padding(vertical = 12.dp))
 
+                        // Provider Dropdown
+                        Text(
+                            "Provider",
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        var providerExpanded by remember { mutableStateOf(false) }
+                        ExposedDropdownMenuBox(
+                            expanded = providerExpanded,
+                            onExpandedChange = { providerExpanded = !providerExpanded }
+                        ) {
+                            OutlinedTextField(
+                                value = editedArchitectProvider,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Provider") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerExpanded) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = providerExpanded,
+                                onDismissRequest = { providerExpanded = false }
+                            ) {
+                                listOf("openrouter", "zen", "ollama").forEach { provider ->
+                                    DropdownMenuItem(
+                                        text = { Text(provider.replaceFirstChar { it.uppercase() }) },
+                                        onClick = {
+                                            editedArchitectProvider = provider
+                                            providerExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Model Text Field
+                        OutlinedTextField(
+                            value = editedArchitectModel,
+                            onValueChange = { editedArchitectModel = it },
+                            label = { Text("Model") },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("z.B. gpt-4o, claude-3-opus, ...") }
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
                         OutlinedTextField(
                             value = editedArchitectPrompt,
                             onValueChange = { editedArchitectPrompt = it },
@@ -212,6 +276,8 @@ fun SettingsScreen(
                             Button(
                                 onClick = {
                                     onUpdateArchitectSystemPrompt(editedArchitectPrompt)
+                                    onUpdateArchitectProvider(editedArchitectProvider)
+                                    onUpdateArchitectModel(editedArchitectModel)
                                     isArchitectExpanded = false
                                 },
                                 modifier = Modifier.weight(1f)
@@ -222,6 +288,8 @@ fun SettingsScreen(
                             OutlinedButton(
                                 onClick = {
                                     editedArchitectPrompt = architectSystemPrompt
+                                    editedArchitectProvider = architectProvider
+                                    editedArchitectModel = architectModel
                                     isArchitectExpanded = false
                                 },
                                 modifier = Modifier.weight(1f)

@@ -511,6 +511,18 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     // ===== ARCHITECT SETTINGS =====
 
+    fun updateArchitectProvider(provider: String) {
+        viewModelScope.launch {
+            architectConfigRepository.updateArchitectProvider(provider)
+        }
+    }
+
+    fun updateArchitectModel(model: String) {
+        viewModelScope.launch {
+            architectConfigRepository.updateArchitectModel(model)
+        }
+    }
+
     fun updateArchitectSystemPrompt(prompt: String) {
         viewModelScope.launch {
             architectConfigRepository.updateArchitectSystemPrompt(prompt)
