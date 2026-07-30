@@ -11,6 +11,7 @@ import com.agents.app.data.ArchitectConfigRepository
 import com.agents.app.data.ProviderCredentials
 import com.agents.app.data.ProviderCredentialsRepository
 import com.agents.app.models.*
+import com.agents.app.data.ProjectFileWriter
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -286,9 +287,43 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     fun updateAutoSummaryEnabled(enabled: Boolean) {
         _isAutoSummaryEnabled.value = enabled
     }
-    // TODO Task 8e: create agents from scaffold
     fun createAgentsFromScaffold(projectId: String, scaffold: ProjectScaffold) {
-        // Placeholder - wird in Task 8e implementiert
+        viewModelScope.launch {
+            // 1. Project-Daten laden
+            val project = repository.getProjectById(projectId) ?: return@launch
+
+            // 2. Projekt-Dateien schreiben
+            val fileWriter = ProjectFileWriter(getApplication())
+            fileWriter.writeProjectFiles(projectId, project.name, scaffold)
+
+            // 3. Agenten aus suggestedAgents erstellen
+            scaffold.suggestedAgents.forEach { agentSpec ->
+                val providerEnum = try {
+                    AIProvider.valueOf(agentSpec.provider.uppercase())
+                } catch (e: IllegalArgumentException) {
+                    AIProvider.OPENROUTER
+                }
+
+                repository.createAgent(
+                    projectId = projectId,
+                    name = agentSpec.name,
+                    description = agentSpec.description,
+                    provider = providerEnum,
+                    systemPrompt = agentSpec.systemPrompt,
+                    model = agentSpec.model,
+                    temperature = agentSpec.temperature
+                )
+            }
+
+            // 4. Agents verladen (selektiertes Projekt)
+            // agentsJob refresh durch selectProject ausloesen
+            selectProject(project)
+
+            // 5. Summary schliessen
+            resetArchitectSummary()
+
+            Log.d("AgentViewModel", "createAgentsFromScaffold: ${scaffold.suggestedAgents.size} Agenten erstellt")
+        }
     }
 
 
