@@ -35,6 +35,7 @@ data class AgentSpecWithEditedPrompt(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArchitectSummaryScreen(
     scaffold: ProjectScaffold,
