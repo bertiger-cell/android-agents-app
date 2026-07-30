@@ -109,7 +109,10 @@ class AgentRepository(
     suspend fun getLatestSessionForAgent(agentId: String): ChatSessionEntity? =
         chatSessionDao.getLatestSessionForAgent(agentId)
 
-    suspend fun getOrCreateSession(agentId: String): ChatSessionEntity {
+    suspend fun getOrCreateSession(
+        agentId: String,
+        title: String = "Chat ${System.currentTimeMillis()}"
+    ): ChatSessionEntity {
         var session = chatSessionDao.getLatestSessionForAgent(agentId)
 
         if (session == null) {
@@ -120,7 +123,7 @@ class AgentRepository(
                 id = UUID.randomUUID().toString(),
                 projectId = agent.projectId,
                 agentId = agentId,
-                title = "Chat ${System.currentTimeMillis()}",
+                title = title,
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis(),
                 isArchived = false

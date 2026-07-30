@@ -12,12 +12,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.agents.app.models.ProjectEntity
 import com.agents.app.ui.AgentViewModel
 import com.agents.app.ui.screens.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val navController = rememberNavController()
+    val navScope = rememberCoroutineScope()
 
     // V3 states
     val projects by viewModel.projects.collectAsState()
@@ -33,6 +36,7 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val availableOllamaModels by viewModel.availableOllamaModels.collectAsState()
     val availableOpenRouterModels by viewModel.availableOpenRouterModels.collectAsState()
     val availableZenModels by viewModel.availableZenModels.collectAsState()
+    val architectSystemPrompt by viewModel.architectSystemPrompt.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize()) {
     NavHost(
@@ -51,8 +55,25 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                     viewModel.selectProject(project)
                     navController.navigate("project/${project.id}")
                 },
-                onCreateProject = { name, description ->
-                    viewModel.createProject(name, description)
+                onCreateProject = { _, _ ->
+                    // Legacy: replaced by onCreateProjectWithArchitect
+                },
+                onCreateProjectWithArchitect = { name, description ->
+                    navScope.launch {
+                        val project = viewModel.createProject(name, description)
+                        val session = viewModel.createArchitectDiscoverySession(project.id)
+                        viewModel.selectProject(
+                            ProjectEntity(
+                                id = project.id,
+                                name = project.name,
+                                description = project.description,
+                                createdAt = project.createdAt,
+                                updatedAt = project.updatedAt,
+                                folderPath = project.folderPath
+                            )
+                        )
+                        viewModel.selectSession(session)
+                    }
                 },
                 onDeleteProject = { project ->
                     viewModel.deleteProject(project.id)
@@ -136,6 +157,8 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 credentials = credentials,
                 ollamaTestMessage = ollamaTestMessage,
                 isOllamaTesting = isOllamaTesting,
+                architectSystemPrompt = architectSystemPrompt,
+                onUpdateArchitectSystemPrompt = { viewModel.updateArchitectSystemPrompt(it) },
                 onUpdateOpenRouterKey = { viewModel.updateOpenRouterKey(it) },
                 onUpdateZenKey = { viewModel.updateZenKey(it) },
                 onUpdateOllamaBaseUrl = { viewModel.updateOllamaBaseUrl(it) },

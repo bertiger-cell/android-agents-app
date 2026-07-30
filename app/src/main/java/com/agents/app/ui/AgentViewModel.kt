@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.agents.app.AgentRepository
 import com.agents.app.AgentsApplication
 import com.agents.app.ai.AIProviderService
+import com.agents.app.data.ArchitectConfigRepository
 import com.agents.app.data.ProviderCredentials
 import com.agents.app.data.ProviderCredentialsRepository
 import com.agents.app.models.*
@@ -17,6 +18,7 @@ import kotlinx.coroutines.launch
 class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AgentRepository
     private val credentialsRepository = ProviderCredentialsRepository(application)
+    private val architectConfigRepository = ArchitectConfigRepository(application)
     private val aiService = AIProviderService()
     private var messagesJob: Job? = null
 
@@ -71,6 +73,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             ProviderCredentials()
         )
 
+    // ===== Architect Config =====
+    val architectSystemPrompt: StateFlow<String> =
+        architectConfigRepository.architectSystemPrompt.stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            DEFAULT_ARCHITECT_PROMPT
+        )
+
     init {
         val app = application as AgentsApplication
         repository = AgentRepository(app.database, app)
@@ -84,10 +94,16 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     // ===== PROJECT MANAGEMENT =====
 
-    fun createProject(name: String, description: String = "") {
-        viewModelScope.launch {
-            repository.createProject(name, description)
-        }
+    suspend fun createProject(name: String, description: String = ""): Project {
+        val entity = repository.createProject(name, description)
+        return Project(
+            id = entity.id,
+            name = entity.name,
+            description = entity.description,
+            createdAt = entity.createdAt,
+            updatedAt = entity.updatedAt,
+            folderPath = entity.folderPath
+        )
     }
 
     fun deleteProject(projectId: String) {
@@ -162,39 +178,93 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ===== ARCHITECT AGENT =====
+
+    suspend fun createOrGetArchitectAgent(projectId: String): Agent {
+        // Check if Architect agent already exists in this project
+        val existingAgents = repository.getAgentsByProject(projectId).first()
+        val existing = existingAgents.find { it.name == "Architect" }
+        if (existing != null) return existing
+
+        // Get custom prompt from DataStore (or default)
+        val customPrompt = architectConfigRepository.architectSystemPrompt.first()
+
+        // Create new Architect agent
+        val architectAgent = Agent(
+            id = UUID.randomUUID().toString(),
+            projectId = projectId,
+            name = "Architect",
+            description = "Project Discovery & Planning Agent",
+            provider = AIProvider.OPENROUTER,
+            model = "gpt-4o",
+            systemPrompt = customPrompt,
+            temperature = 0.7f,
+            maxTokens = 8192
+        )
+        repository.createAgent(
+            projectId = projectId,
+            name = architectAgent.name,
+            description = architectAgent.description,
+            provider = architectAgent.provider,
+            systemPrompt = architectAgent.systemPrompt,
+            model = architectAgent.model,
+            temperature = architectAgent.temperature
+        )
+        return architectAgent
+    }
+
+    suspend fun createArchitectDiscoverySession(projectId: String): ChatSessionEntity {
+        val architect = createOrGetArchitectAgent(projectId)
+
+        val session = repository.getOrCreateSession(
+            agentId = architect.id,
+            title = "Project Discovery"
+        )
+
+        val introMessage = """
+            Hallo! Ich bin dein Projekt-Architect.
+            
+            Lass mich dein Projekt verstehen. Erzaehl mir:
+            - Was moechtest du bauen?
+            - Was ist die grosse Idee dahinter?
+            
+            (Keine Eile – lass uns brainstormen!)
+        """.trimIndent()
+
+        repository.addMessage(
+            sessionId = session.id,
+            role = MessageRole.ASSISTANT,
+            content = introMessage,
+            isInternalThought = false
+        )
+
+        return session
+    }
+
     // ===== SESSION MANAGEMENT =====
 
     fun selectSession(session: ChatSessionEntity?) {
         _selectedSession.value = session
+        _messages.value = emptyList()
         messagesJob?.cancel()
+
         if (session != null) {
             messagesJob = viewModelScope.launch {
                 repository.getMessagesBySession(session.id).collect { messageList ->
                     _messages.value = messageList
                 }
             }
-        } else {
-            _messages.value = emptyList()
-        }
-    }
-
-    fun clearChat(sessionId: String) {
-        viewModelScope.launch {
-            repository.deleteMessagesBySession(sessionId)
-            _messages.value = emptyList()
         }
     }
 
     fun renameSession(sessionId: String, newTitle: String) {
-        if (newTitle.isBlank()) return
         viewModelScope.launch {
-            repository.getSessionById(sessionId)?.let { session ->
+            val session = repository.getSessionById(sessionId)
+            if (session != null) {
                 repository.updateSession(session.copy(title = newTitle.trim()))
-                // Update in-memory state
-                val updated = _selectedSession.value?.let {
+                _selectedSession.value = _selectedSession.value?.let {
                     if (it.id == sessionId) it.copy(title = newTitle.trim()) else null
                 }
-                if (updated != null) _selectedSession.value = updated
             }
         }
     }
@@ -313,6 +383,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateOllamaApiKey(key: String) {
         viewModelScope.launch { credentialsRepository.updateOllamaApiKey(key) }
+    }
+
+    // ===== ARCHITECT SETTINGS =====
+
+    fun updateArchitectSystemPrompt(prompt: String) {
+        viewModelScope.launch {
+            architectConfigRepository.updateArchitectSystemPrompt(prompt)
+        }
     }
 
     // ===== TEST CONNECTION =====

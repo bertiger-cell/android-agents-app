@@ -31,6 +31,7 @@ fun ProjectListScreen(
     projects: List<ProjectEntity>,
     onProjectSelected: (ProjectEntity) -> Unit,
     onCreateProject: (name: String, description: String) -> Unit,
+    onCreateProjectWithArchitect: (name: String, description: String) -> Unit,
     onDeleteProject: (ProjectEntity) -> Unit,
     onSettings: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -120,7 +121,7 @@ fun ProjectListScreen(
         CreateProjectDialog(
             onDismiss = { showCreateDialog = false },
             onCreate = { name, description ->
-                onCreateProject(name, description)
+                onCreateProjectWithArchitect(name, description)
                 showCreateDialog = false
             }
         )
