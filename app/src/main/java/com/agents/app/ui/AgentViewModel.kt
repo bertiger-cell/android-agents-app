@@ -22,6 +22,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val architectConfigRepository = ArchitectConfigRepository(application)
     private val aiService = AIProviderService()
     private var messagesJob: Job? = null
+    private var agentsJob: Job? = null
 
     // ===== Projects =====
     private val _projects = MutableStateFlow<List<ProjectEntity>>(emptyList())
@@ -120,8 +121,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         _messages.value = emptyList()
         _selectedSession.value = null
         messagesJob?.cancel()
+        agentsJob?.cancel()
 
-        messagesJob = viewModelScope.launch {
+        agentsJob = viewModelScope.launch {
             repository.getAgentsByProject(project.id)
                 .flatMapLatest { agentList ->
                     _agents.value = agentList
@@ -187,32 +189,26 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         val existing = existingAgents.find { it.name == "Architect" }
         if (existing != null) return existing
 
-        // Get custom prompt from DataStore (or default)
         val customPrompt = architectConfigRepository.architectSystemPrompt.first()
-
-        // Create new Architect agent
-        val architectAgent = Agent(
-            id = UUID.randomUUID().toString(),
+        // Let repository create the agent (handles UUID internally)
+        repository.createAgent(
             projectId = projectId,
             name = "Architect",
             description = "Project Discovery & Planning Agent",
             provider = AIProvider.OPENROUTER,
-            model = "gpt-4o",
             systemPrompt = customPrompt,
-            temperature = 0.7f,
-            maxTokens = 8192
+            model = "gpt-4o",
+            temperature = 0.7f
         )
-        repository.createAgent(
-            projectId = projectId,
-            name = architectAgent.name,
-            description = architectAgent.description,
-            provider = architectAgent.provider,
-            systemPrompt = architectAgent.systemPrompt,
-            model = architectAgent.model,
-            temperature = architectAgent.temperature
-        )
-        return architectAgent
-    }
+
+        // Query back the agent we just created (consistent UUID)
+        val agents = repository.getAgentsByProject(projectId).first()
+        val architect = agents.find { it.name == "Architect" }
+            ?: throw Exception("Architect agent creation failed")
+
+        // Add to in-memory state immediately (agentsJob is async)
+        _agents.value = _agents.value + architect
+        return architect
 
     suspend fun createArchitectDiscoverySession(projectId: String): ChatSessionEntity {
         val architect = createOrGetArchitectAgent(projectId)
