@@ -17,10 +17,7 @@ interface AgentDao {
 
     @Query("DELETE FROM agents WHERE id = :agentId")
     suspend fun deleteAgentById(agentId: String)
-
-    @Query("SELECT * FROM agents ORDER BY name")
-    fun getAllAgents(): Flow<List<Agent>>
-
+ 
     @Query("SELECT * FROM agents WHERE projectId = :projectId ORDER BY name")
     fun getAgentsByProject(projectId: String): Flow<List<Agent>>
 

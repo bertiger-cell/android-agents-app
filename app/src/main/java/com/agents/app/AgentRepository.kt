@@ -11,12 +11,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-
-
 import android.util.Log
- 
 import org.json.JSONArray
 import org.json.JSONObject
+
 class AgentRepository(
     private val database: AgentDatabase,
     private val context: Context
@@ -64,7 +62,6 @@ class AgentRepository(
 
     // --- Agent operations ---
 
-    fun getAllAgents(): Flow<List<Agent>> = agentDao.getAllAgents()
 
     fun getAgentsByProject(projectId: String): Flow<List<Agent>> =
         agentDao.getAgentsByProject(projectId)
