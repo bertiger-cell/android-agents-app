@@ -146,6 +146,19 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun updateProject(projectId: String, name: String, description: String) {
+        viewModelScope.launch {
+            val project = repository.getProjectById(projectId) ?: return@launch
+            val updated = project.copy(
+                name = name.trim(),
+                description = description.trim(),
+                updatedAt = System.currentTimeMillis()
+            )
+            repository.updateProject(updated)
+            _selectedProject.value = updated
+        }
+    }
+
     fun selectProject(project: ProjectEntity) {
         _selectedProject.value = project
         _agents.value = emptyList()

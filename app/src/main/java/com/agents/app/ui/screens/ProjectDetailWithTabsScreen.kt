@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
@@ -38,10 +39,12 @@ fun ProjectDetailWithTabsScreen(
     onNewChat: (Agent) -> Unit = {},
     onDeleteAgent: (Agent) -> Unit = {},
     onRestartArchitectDiscovery: () -> Unit = {},
+    onUpdateProject: (projectId: String, name: String, description: String) -> Unit = { _, _, _ -> },
     onNavigateBack: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     var deleteConfirmAgent by remember { mutableStateOf<Agent?>(null) }
+    var showEditDialog by remember { mutableStateOf(false) }
     // Chat-Modal handled via AppNavigation Dialog
     // Chat-Modal handled via AppNavigation Dialog
 
@@ -61,6 +64,11 @@ fun ProjectDetailWithTabsScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Zuruck")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showEditDialog = true }) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Projekt bearbeiten")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -104,6 +112,51 @@ fun ProjectDetailWithTabsScreen(
                 )
             }
         }
+    }
+
+    // Edit Project Dialog
+    if (showEditDialog) {
+        var editName by remember { mutableStateOf(project.name) }
+        var editDescription by remember { mutableStateOf(project.description) }
+
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Projekt bearbeiten") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = { editName = it },
+                        label = { Text("Projektname") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editDescription,
+                        onValueChange = { editDescription = it },
+                        label = { Text("Beschreibung") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 5
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onUpdateProject(project.id, editName, editDescription)
+                        showEditDialog = false
+                    },
+                    enabled = editName.isNotBlank()
+                ) {
+                    Text("Speichern")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
     }
 
     // Delete Confirmation Dialog for Agent

@@ -156,6 +156,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 onRestartArchitectDiscovery = {
                     viewModel.restartArchitectDiscovery(projectId)
                 },
+                onUpdateProject = { id, name, description ->
+                    viewModel.updateProject(id, name, description)
+                },
                 onNavigateBack = {
                     navController.popBackStack()
                 }
