@@ -24,7 +24,9 @@ import java.util.UUID
 data class ProjectFileInfo(
     val name: String,
     val content: String,
-    val isMarkdown: Boolean
+    val isMarkdown: Boolean,
+    val sizeBytes: Long,
+    val lastModified: Long
 )
 
 class AgentViewModel(application: Application) : AndroidViewModel(application) {
@@ -259,7 +261,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                         ProjectFileInfo(
                             name = file.name,
                             content = file.readText(),
-                            isMarkdown = file.name.endsWith(".md")
+                            isMarkdown = file.name.endsWith(".md"),
+                            sizeBytes = file.length(),
+                            lastModified = file.lastModified()
                         )
                     } ?: emptyList()
             }

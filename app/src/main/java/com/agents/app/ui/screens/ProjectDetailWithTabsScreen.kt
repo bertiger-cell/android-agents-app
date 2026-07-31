@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
@@ -496,7 +497,7 @@ fun ProjectFilesTab(
     var selectedFile by remember { mutableStateOf<ProjectFileInfo?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(project.id) {
+    fun loadFiles() {
         isLoading = true
         viewModel.getProjectFiles(project.id) { result ->
             files = result
@@ -504,74 +505,120 @@ fun ProjectFilesTab(
         }
     }
 
-    if (isLoading) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
-    } else if (files.isEmpty()) {
-        Box(
+    LaunchedEffect(project.id) {
+        loadFiles()
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        // Header mit Refresh
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "${files.size} Datei${if (files.size != 1) "en" else ""}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            IconButton(
+                onClick = { loadFiles() },
+                enabled = !isLoading
+            ) {
                 Icon(
-                    Icons.Filled.Description,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    "Keine Dateien gefunden",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    "Fuehre zuerst den Architect-Discovery durch.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    Icons.Filled.Refresh,
+                    contentDescription = "Dateien aktualisieren"
                 )
             }
         }
-    } else {
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(files) { file ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { selectedFile = file },
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(8.dp)
+
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    CircularProgressIndicator()
+                }
+            }
+            files.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
-                            if (file.isMarkdown) Icons.Filled.Description else Icons.Filled.Description,
+                            Icons.Filled.Description,
                             contentDescription = null,
-                            tint = if (file.isMarkdown) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.tertiary,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            file.name,
-                            style = MaterialTheme.typography.bodyMedium
+                            "Keine Dateien gefunden",
+                            style = MaterialTheme.typography.titleMedium
                         )
+                        Text(
+                            "Fuehre zuerst den Architect-Discovery durch.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(files, key = { it.name }) { file ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedFile = file },
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    if (file.isMarkdown) Icons.Filled.Description else Icons.Filled.Code,
+                                    contentDescription = null,
+                                    tint = if (file.isMarkdown) MaterialTheme.colorScheme.primary
+                                           else MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        file.name,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        "${formatFileSize(file.sizeBytes)}  \u00b7  ${formatDate(file.lastModified)}",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Icon(
+                                    Icons.Filled.ChevronRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -583,20 +630,28 @@ fun ProjectFilesTab(
         AlertDialog(
             onDismissRequest = { selectedFile = null },
             title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        if (selectedFile!!.isMarkdown) Icons.Filled.Description else Icons.Filled.Description,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            if (selectedFile!!.isMarkdown) Icons.Filled.Description else Icons.Filled.Code,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = if (selectedFile!!.isMarkdown) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.tertiary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(selectedFile!!.name)
+                    }
+                    Text(
+                        "${formatFileSize(selectedFile!!.sizeBytes)}  \u00b7  ${formatDate(selectedFile!!.lastModified)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(selectedFile!!.name)
                 }
             },
             text = {
-                rememberScrollState()
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -616,6 +671,14 @@ fun ProjectFilesTab(
                 }
             }
         )
+    }
+}
+
+private fun formatFileSize(bytes: Long): String {
+    return when {
+        bytes >= 1024 * 1024 -> "%.1f MB".format(bytes / (1024.0 * 1024.0))
+        bytes >= 1024 -> "%.1f KB".format(bytes / 1024.0)
+        else -> "$bytes B"
     }
 }
 
