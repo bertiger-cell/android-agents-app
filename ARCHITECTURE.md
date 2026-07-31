@@ -21,7 +21,20 @@ gestreamt gechattet werden.
 - Settings mit persistenten API-Keys und Architect-Konfiguration
 - Projekt-Dateien in der App anzeigen (`.md`, `.json`)
 - Discovery-Interview jederzeit neu starten
-- 26 Unit-Tests
+- 5 Unit-Test-Suiten
+
+## Optional Features
+
+### Architect Agent
+- **Status:** optional, standardmäßig deaktiviert
+- **Toggle Location:** Settings
+- **Behavior:**
+  - **Enabled (`true`):** Neues Projekt startet automatisch das Architect-Interview
+    in einer Chat-Session, erzeugt den Projektplan und schreibt die Scaffold-Dateien.
+  - **Disabled (`false`):** Neues Projekt wird ohne Architect-Interview erstellt und
+    direkt im Projekt-Detail angezeigt.
+- **Implementation:** DataStore-Key `architect_enabled` über
+  `ArchitectConfigRepository.isArchitectEnabled`
 
 ## Pattern
 
@@ -201,10 +214,10 @@ Material 3 mit Dynamic Color (Android 12+) und Fallback-Palette:
 
 ## Tests
 
-26 Unit-Tests unter `app/src/test/`:
-- JSON-Extraktion (Regex)
+5 Unit-Test-Suiten unter `app/src/test/`:
+- JSON-Extraktion aus Architect-Antworten
 - JSON-Struktur/Modelle (Gson)
-- Agent/Scaffold-Datenmodelle
+- Agent-/Projekt-/Scaffold-Datenmodelle
 - ArchitectSummary-Konvertierung
 - Message-History-Begrenzung
 

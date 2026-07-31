@@ -101,9 +101,6 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                     viewModel.selectProject(project)
                     navController.navigate("project/${project.id}")
                 },
-                onCreateProject = { _, _ ->
-                    // Legacy: replaced by onCreateProjectWithArchitect
-                },
                 onCreateProjectWithArchitect = { name, description ->
                     navScope.launch {
                         val project = viewModel.createProject(name, description)
@@ -119,6 +116,23 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                             )
                         )
                         viewModel.selectSession(session)
+                    }
+                },
+                onCreateProjectNormal = { name, description ->
+                    navScope.launch {
+                        val project = viewModel.createProject(name, description)
+                        viewModel.selectProject(
+                            ProjectEntity(
+                                id = project.id,
+                                name = project.name,
+                                description = project.description,
+                                createdAt = project.createdAt,
+                                updatedAt = project.updatedAt,
+                                folderPath = project.folderPath
+                            )
+                        )
+                        viewModel.selectSession(null)
+                        navController.navigate("project/${project.id}")
                     }
                 },
                 onDeleteProject = { project ->

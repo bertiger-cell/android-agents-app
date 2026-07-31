@@ -15,11 +15,13 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.agents.app.data.ArchitectConfigRepository
 import com.agents.app.models.ProjectEntity
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,14 +32,17 @@ import java.util.Locale
 fun ProjectListScreen(
     projects: List<ProjectEntity>,
     onProjectSelected: (ProjectEntity) -> Unit,
-    onCreateProject: (name: String, description: String) -> Unit,
     onCreateProjectWithArchitect: (name: String, description: String) -> Unit,
+    onCreateProjectNormal: (name: String, description: String) -> Unit,
     onDeleteProject: (ProjectEntity) -> Unit,
     onSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var deleteConfirmProject by remember { mutableStateOf<ProjectEntity?>(null) }
+    val context = LocalContext.current
+    val architectConfigRepository = remember(context) { ArchitectConfigRepository(context) }
+    val isArchitectEnabled by architectConfigRepository.isArchitectEnabled.collectAsState(initial = false)
 
     Scaffold(
         topBar = {
@@ -213,7 +218,11 @@ fun ProjectListScreen(
         CreateProjectDialog(
             onDismiss = { showCreateDialog = false },
             onCreate = { name, description ->
-                onCreateProjectWithArchitect(name, description)
+                if (isArchitectEnabled) {
+                    onCreateProjectWithArchitect(name, description)
+                } else {
+                    onCreateProjectNormal(name, description)
+                }
                 showCreateDialog = false
             }
         )
