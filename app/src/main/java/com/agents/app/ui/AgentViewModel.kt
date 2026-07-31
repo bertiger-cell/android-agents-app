@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agents.app.AgentRepository
+import com.agents.app.ScaffoldParseResult
 import com.agents.app.AgentsApplication
 import com.agents.app.ai.AIProviderService
 import com.agents.app.data.ArchitectConfigRepository
