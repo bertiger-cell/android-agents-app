@@ -15,6 +15,28 @@ import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 
+const val MAX_HISTORY_MESSAGES = 50
+
+fun buildApiMessages(
+    systemPrompt: String,
+    history: List<Message>,
+    maxHistoryMessages: Int = MAX_HISTORY_MESSAGES
+): List<ApiMessage> {
+    val messages = mutableListOf(ApiMessage(role = "system", content = systemPrompt))
+    val recentHistory = if (history.size > maxHistoryMessages) {
+        history.takeLast(maxHistoryMessages)
+    } else {
+        history
+    }
+    recentHistory.forEach { msg ->
+        messages.add(ApiMessage(
+            role = msg.role.name.lowercase(),
+            content = msg.content
+        ))
+    }
+    return messages
+}
+
 sealed class ScaffoldParseResult {
     data class Success(val scaffold: ProjectScaffold) : ScaffoldParseResult()
     data class Error(val message: String, val cause: Throwable? = null) : ScaffoldParseResult()
@@ -215,16 +237,12 @@ class AgentRepository(
             content = userMessage
         )
 
-        // 4. Message-History laden
+        // 4. Message-History laden (auf letzte N begrenzen)
         val history = messageDao.getMessagesBySession(session.id).first()
-        val messages = mutableListOf<ApiMessage>()
-        messages.add(ApiMessage(role = "system", content = agent.systemPrompt))
-        history.forEach { msg ->
-            messages.add(ApiMessage(
-                role = msg.role.name.lowercase(),
-                content = msg.content
-            ))
-        }
+        val messages = buildApiMessages(
+            systemPrompt = agent.systemPrompt,
+            history = history
+        )
 
         // 5. AI Provider aufrufen (Streaming sammeln)
         var finalResult = AgentResult(success = false, output = "")
