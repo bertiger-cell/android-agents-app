@@ -1,34 +1,144 @@
-# Architektur – android-agents-app
+# Architektur – Agent Studio (android-agents-app)
 
-## Zweck (v1.5)
+## Zweck (v2)
 
-Android-App zur Verwaltung von KI-Agenten (DB-gestützt) mit
-Streaming-Chat über drei Provider: OpenRouter, OpenCode Zen,
-Ollama (lokal oder cloud). Animierter Intro-Screen,
-Agent-Vorlagen, Dark Theme mit intensiven Farben.
+Android-App zur Verwaltung von KI-Projekten und -Agenten. Jedes Projekt startet
+mit einem **Architect-Interview**, das einen Projekt-Plan als JSON generiert und
+daraus Markdown-Dokumente sowie spezialisierte Agenten erstellt. Anschließend kann
+mit den Agenten über **OpenRouter**, **OpenCode Zen** oder **Ollama** (Cloud/lokal)
+gestreamt gechattet werden.
 
 ## Feature-Übersicht
 
-- Streaming-Antworten (Token für Token via Flow)
+- Dashboard „Agent Studio“ mit Willkommens-/Übersichts-Ansicht
+- Projekt-CRUD (erstellen, editieren, löschen mit Bestätigung)
+- Architect-Discovery: 3-Phasen-Interview, JSON-Extraktion, Summary mit Prompt-Editing
+- Automatische Datei-Generierung im Projekt-Ordner
+- Agenten aus `suggested_agents` automatisch anlegen
+- Streaming-Chat (Token für Token via Flow)
+- Multi-Provider: OpenRouter, OpenCode Zen, Ollama (Cloud + lokal)
 - Model-Picker pro Provider (API-gestützt)
-- Agent-Vorlagen (Code Assistant, Creative Writer, etc.)
-- Animierter Intro-Screen mit wechselnden Sprüchen
-- HomeScreen mit Uhrzeit und letzter Aktivität
-- Dark Theme mit Shapes und intensiven Farben
-- Screen-Transitions (fade + slide)
+- Settings mit persistenten API-Keys und Architect-Konfiguration
+- Projekt-Dateien in der App anzeigen (`.md`, `.json`)
+- Discovery-Interview jederzeit neu starten
+- 26 Unit-Tests
 
 ## Pattern
 
 Zentraler Service statt Interface pro Provider:
 
 - `AIProviderService` (in `ai/`) – eine Klasse mit:
-  - `sendMessage()` – synchron (Legacy, für AgentRepository)
-  - `streamMessage()` – streaming, gibt `Flow<AgentResult>` zurück
+  - `streamMessage()` – Streaming, gibt `Flow<AgentResult>` zurück
   - `streamOpenAiCompatible()` – SSE-Parsing für OpenRouter/Zen
   - `streamOllama()` – NDJSON-Parsing für Ollama
   - `fetchOpenAICompatibleModels()` – Model-Liste laden
+  - `fetchOllamaModels()` – Ollama `/api/tags`
   - `testOllamaConnection()` – Verbindungstest
 - `AIProvider` – Enum: `OPENROUTER`, `OLLAMA`, `ZEN`
+
+## Package-Struktur
+
+```
+com.agents.app/
+├── ai/
+│   └── AIProviderService.kt
+├── data/
+│   ├── ArchitectConfigRepository.kt
+│   ├── ProjectFileWriter.kt
+│   └── ProviderCredentialsRepository.kt
+├── db/
+│   ├── AgentDao.kt
+│   ├── AgentDatabase.kt
+│   ├── ChatSessionDao.kt
+│   ├── MessageDao.kt
+│   └── ProjectDao.kt
+├── models/
+│   └── AgentModels.kt
+├── ui/
+│   ├── AgentViewModel.kt
+│   ├── navigation/
+│   │   └── AppNavigation.kt
+│   ├── screens/
+│   │   ├── ArchitectSummaryScreen.kt
+│   │   ├── ChatScreen.kt
+│   │   ├── CreateAgentScreen.kt
+│   │   ├── ProjectDetailWithTabsScreen.kt
+│   │   ├── ProjectListScreen.kt
+│   │   └── SettingsScreen.kt
+│   └── theme/
+│       ├── Color.kt
+│       ├── Theme.kt
+│       └── Type.kt
+├── AgentRepository.kt
+├── AgentsApplication.kt
+└── MainActivity.kt
+```
+
+## Navigation
+
+```
+Projects/Dashboard (start)
+  → Project Detail (Agenten / Sessions / Dateien)
+    → Create Agent
+  → Settings
+
+Modals (überlagern Navigation):
+  → Chat (wenn Session selektiert)
+  → Architect Summary (wenn Projektplan erstellt)
+```
+
+Routen in `AppNavigation.kt`:
+- `projects` – Dashboard/Projektliste
+- `project/{projectId}` – Detail mit 3 Tabs
+- `create-agent/{projectId}` – Agent anlegen
+- `settings` – Einstellungen
+
+## Datenbank (Room, Version 2)
+
+Tabellen:
+- `projects` – Projektmetadaten + `folderPath`
+- `agents` – Agent-Konfiguration, Fremdschlüssel auf Projekt (CASCADE)
+- `chat_sessions` – Session pro Agent (CASCADE)
+- `messages` – Chat-Nachrichten, Fremdschlüssel auf Session (CASCADE)
+
+Alle Löschungen kaskadieren von Projekt → Agenten → Sessions → Nachrichten.
+
+## Dateisystem
+
+Projekt-Ordner unter `files/projects/<Name>_<ID>/`:
+
+| Datei | Zweck |
+|---|---|
+| `diary.md` | Projekt-Tagebuch, Shared Memory |
+| `discovery.json` | Roh-JSON des Architect-Plans |
+| `ARCHITECTURE.md` | Architektur-Dokumentation |
+| `ROADMAP.md` | Roadmap/Phasen |
+| `RULES.md` | Projektregeln |
+| `SKILLS.md` | Skills für das Projekt |
+| `AGENTS.md` | Agenten-Rollen |
+
+Generiert durch `ProjectFileWriter`.
+
+## Architect-Flow
+
+```
+Projekt erstellen
+  → createArchitectDiscoverySession()
+    → createOrGetArchitectAgent() (Provider/Modell aus Settings)
+    → Chat mit Architect (3 Phasen)
+  → sendMessage() erkennt Architect-Antwort
+    → extractAndParseArchitectJSON()
+      → saveProjectScaffold() → ScaffoldParseResult
+        → discovery.json speichern
+  → showArchitectSummary = true
+    → ArchitectSummaryScreen (Prompts editierbar)
+  → createAgentsFromScaffold()
+    → ProjectFileWriter (Markdown-Dateien)
+    → Agenten aus suggestedAgents anlegen
+    → Toast + Loading-Overlay
+```
+
+Fehler beim JSON-Parsing erscheinen als Assistant-Message im Chat.
 
 ## Provider-Details
 
@@ -52,8 +162,10 @@ Zentraler Service statt Interface pro Provider:
 
 ```
 AgentViewModel.sendMessage()
-  → aiService.streamMessage() → Flow<AgentResult>
-    → streamOpenAiCompatible() / streamOllama() → Flow<String>
+  → AgentRepository.chat()
+    → buildApiMessages() (System-Prompt + letzte 50 Nachrichten)
+    → AIProviderService.streamMessage() → Flow<AgentResult>
+      → streamOpenAiCompatible() / streamOllama() → Flow<String>
       → OkHttp SSE / NDJSON Parsing
       → flowOn(Dispatchers.IO)
     → Token für Token emit(AgentResult(output=laufenderText))
@@ -61,130 +173,51 @@ AgentViewModel.sendMessage()
   → ChatScreen LaunchedEffect scrollt automatisch
 ```
 
-## Package-Struktur
-```
-com.agents.app/
-├── ai/
-│   └── AIProviderService.kt
-├── data/
-│   └── ProviderCredentialsRepository.kt
-├── db/
-│   ├── AgentDao.kt
-│   ├── MessageDao.kt
-│   └── AgentDatabase.kt
-├── models/
-│   └── AgentModels.kt
-├── ui/
-│   ├── AgentViewModel.kt
-│   ├── navigation/
-│   │   └── AppNavigation.kt
-│   ├── screens/
-│   │   ├── IntroScreen.kt      (animierter Splash)
-│   │   ├── HomeScreen.kt       (Uhr, letzte Aktivität)
-│   │   ├── AgentListScreen.kt
-│   │   ├── ChatScreen.kt       (Streaming-Auto-Scroll)
-│   │   ├── CreateAgentScreen.kt (Templates + Model-Picker)
-│   │   └── SettingsScreen.kt
-│   └── theme/
-│       ├── Color.kt
-│       ├── Theme.kt            (Dark Theme, Shapes)
-│       └── Type.kt
-├── AgentRepository.kt
-├── AgentsApplication.kt
-└── MainActivity.kt
-```
+Die History wird für API-Calls auf die letzten 50 Nachrichten begrenzt
+(`MAX_HISTORY_MESSAGES`), um Token-Verbrauch und Latenz bei großen Sessions
+zu begrenzen.
 
-## Navigation
-```
-IntroScreen (4.2s) → HomeScreen → AgentListScreen → ChatScreen
-                                    ↕                   ↕
-                              CreateAgentScreen    SettingsScreen
-```
-
-## Provider-Zugangsdaten
+## Settings / DataStore
 
 Persistiert via Jetpack DataStore (Preferences):
 
-- `openrouter_api_key`
-- `opencode_zen_api_key`
-- `ollama_base_url` (Default: `https://ollama.com`)
-- `ollama_api_key` (optional, nur für Ollama-Cloud)
+- `provider_credentials`:
+  - `openrouter_api_key`
+  - `opencode_zen_api_key`
+  - `ollama_base_url` (Default: `https://ollama.com`)
+  - `ollama_api_key`
+- `architect_config`:
+  - `architect_system_prompt`
+  - `architect_provider` (Default: `openrouter`)
+  - `architect_model` (Default: `gpt-4o`)
 
 ## Theme
 
-Dark Mode erzwungen (`darkTheme = true, dynamicColor = false`):
-- Primary: `#BB86FC` (Violett)
-- Secondary: `#03DAC6` (Tuerkis)
-- Background: `#0D0D0D`
-- Surface: `#1A1A1A`
+Material 3 mit Dynamic Color (Android 12+) und Fallback-Palette:
+
+- Dark: Background `#0D0D0D`, Primary `#BB86FC`, Secondary `#03DAC6`
+- Light: Background `#FFFBFE`, Primary `#6200EE`, Secondary `#03DAC6`
 - Shapes: 8-32dp abgerundet
 
-## Project Diary (Projekt-Tagebuch)
+## Tests
 
-Ein einfaches Markdown-File `diary.md` im Projekt-Ordner (`folderPath`).
-Dient als Shared Memory für alle Entwicklung-Agenten (Coder, Architekt).
+26 Unit-Tests unter `app/src/test/`:
+- JSON-Extraktion (Regex)
+- JSON-Struktur/Modelle (Gson)
+- Agent/Scaffold-Datenmodelle
+- ArchitectSummary-Konvertierung
+- Message-History-Begrenzung
 
-### Zweck
-- Entscheidungen festhalten (warum wurde X so implementiert?)
-- Code-Review-Ergebnisse dokumentieren
-- Offene Fragen / Blockaden notieren
-- Kontext für nachfolgende Agenten-Sessions bereitstellen
+## Non-Goals (aktuell geplant, nicht umgesetzt)
 
-### Format
-```
-# Project Diary – <Projektname>
-
-## 2024-07-29 04:30 – Coder
-Kurze Beschreibung der Änderung/Entscheidung.
-
-## 2024-07-29 04:35 – Architekt
-Review-Ergebnis, Genehmigung oder Einwand.
-```
-
-### Implementierung
-- `AgentRepository.kt`: `readDiary(projectId)` und `appendToDiary(projectId, role, content)`
-- Datei-Pfad: `{folderPath}/diary.md`
-- Anlegen bei Projekt-Erstellung (leeres File)
-- Anhängen nach jeder abgeschlossenen Änderung (via Repository-Methoden)
-- Lesen am Anfang jeder Agenten-Session (via SESSION_START.md)
-
-### Kein RAG
-Das Diary ist ein plain-text Markdown-File, kein Vector Store.
-Agenten lesen das komplette File und entscheiden selbst, was relevant ist.
-
-## Non-Goals für v1
-- Tool-Calling / Function-Calling
-- Mehrere Agenten gleichzeitig / Orchestrierung
-- On-Device-Inferenz
-- RAG
+- LangChain4j / formale ToolRegistry
+- On-Device-Inferenz (LiteRT/MediaPipe)
+- Vision / Bildgenerierung
+- Speech-to-Text / Text-to-Speech
+- Multi-Agent-Orchestrierung / Debating
+- RAG / Vector Store
+- Geplante Automatisierung (WorkManager)
 
 ## Versionierung
+
 Diese Datei wird zuerst geändert, dann der Code – nicht umgekehrt.
-
-## Provider-Zugangsdaten – Ist-Zustand & Ziel
-
-### Ist-Zustand (Bug, Stand: Prüfung des echten Codes)
-- Ein einziges globales Feld `_apiKey: MutableStateFlow<String>` in
-  `AgentViewModel.kt` für ALLE Cloud-Provider zusammen (OpenRouter UND
-  OpenCode Zen teilen sich denselben Wert).
-- Kein Ollama-API-Key-Feld (Cloud-Modus nicht bedienbar, obwohl
-  `AIProviderService.callOllama()` den Header bereits unterstützt).
-- **Keine Persistenz.** Weder SharedPreferences noch DataStore (obwohl
-  als Dependency vorhanden) noch Room werden genutzt. Bei App-Neustart
-  bzw. Prozess-Kill durch Android ist jeder eingegebene Key weg.
-
-### Ziel-Architektur
-- Jetpack DataStore (Preferences) als Speicher, EIN Key pro Provider:
-  - `openrouter_api_key`
-  - `opencode_zen_api_key`
-  - `ollama_base_url` (Default: `http://127.0.0.1:11434`)
-  - `ollama_api_key` (optional, nur für Ollama-Cloud-Modus)
-- Neue Klasse `ProviderCredentialsRepository` (in `data/`), kapselt
-  DataStore-Zugriff, stellt `Flow<ProviderCredentials>` bereit sowie
-  `suspend fun update...()`-Funktionen pro Feld.
-- `AgentViewModel` bezieht Zugangsdaten aus diesem Repository statt
-  eigener `MutableStateFlow<String>`-Felder.
-- `AgentRepository.chat()` / `AIProviderService.sendMessage()` wählen
-  anhand von `agent.provider` das passende Credential aus dem
-  Repository aus, statt einen einzigen global übergebenen `apiKey`-
-  Parameter zu erwarten.
