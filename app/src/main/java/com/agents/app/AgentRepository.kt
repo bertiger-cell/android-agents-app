@@ -15,6 +15,11 @@ import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 
+sealed class ScaffoldParseResult {
+    data class Success(val scaffold: ProjectScaffold) : ScaffoldParseResult()
+    data class Error(val message: String, val cause: Throwable? = null) : ScaffoldParseResult()
+}
+
 class AgentRepository(
     private val database: AgentDatabase,
     private val context: Context
@@ -285,10 +290,10 @@ class AgentRepository(
         }
     }
 
-    suspend fun saveProjectScaffold(projectId: String, scaffoldJson: String): ProjectScaffold? {
+    suspend fun saveProjectScaffold(projectId: String, scaffoldJson: String): ScaffoldParseResult {
         return try {
             // 1. Project aus DB holen für folderPath
-            val project = projectDao.getProjectById(projectId) ?: return null
+            val project = projectDao.getProjectById(projectId) ?: return ScaffoldParseResult.Error("Projekt nicht gefunden")
             val discoveryFile = File(project.folderPath, "discovery.json")
 
             // 2. Parse JSON (robust)
@@ -310,7 +315,7 @@ class AgentRepository(
             )
 
             // 4. Extract Phases
-            val phasesArr = jsonObject.optJSONArray("phases") ?: return null
+            val phasesArr = jsonObject.optJSONArray("phases") ?: return ScaffoldParseResult.Error("JSON enthaelt kein phases-Array")
             val phases = (0 until phasesArr.length()).map { i ->
                 val phase = phasesArr.getJSONObject(i)
                 ScaffoldPhase(
@@ -353,10 +358,11 @@ class AgentRepository(
             // 8. Original JSON in Project-Ordner speichern
             discoveryFile.writeText(scaffoldJson)
 
-            scaffold
+            ScaffoldParseResult.Success(scaffold)
         } catch (e: Exception) {
-            Log.e("ArchitectJSON", "Fehler beim Parsen: ${e.message}")
-            null
+            val message = "JSON-Parsing fehlgeschlagen: ${e.message ?: "Unbekannter Fehler"}"
+            Log.e("ArchitectJSON", message, e)
+            ScaffoldParseResult.Error(message, e)
         }
     }
 }

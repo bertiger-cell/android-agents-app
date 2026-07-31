@@ -343,29 +343,50 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         projectId: String,
         architectMessage: String
     ) {
-        // Robustes JSON-Extraktion: ersten { und letzten } finden
+        val session = _selectedSession.value ?: return
         val start = architectMessage.indexOf('{')
         val end = architectMessage.lastIndexOf('}')
+
         if (start < 0 || end <= start) {
-            Log.w("ArchitectJSON", "Kein JSON im Architect-Output gefunden")
+            val message = "Es konnte kein Projektplan (JSON) in der Antwort gefunden werden. " +
+                "Bitte sage dem Architect z.B. 'Mach mir einen Plan!'"
+            Log.w("ArchitectJSON", message)
+            addArchitectFeedback(session.id, message)
             return
         }
 
         val jsonString = architectMessage.substring(start..end)
+        when (val result = repository.saveProjectScaffold(projectId, jsonString)) {
+            is ScaffoldParseResult.Success -> {
+                _projectScaffold.value = result.scaffold
 
-        // Speichern und parsen
-        val scaffold = repository.saveProjectScaffold(projectId, jsonString)
-
-        if (scaffold != null) {
-            _projectScaffold.value = scaffold
-
-            // Auto-Summary Entscheidung
-            if (_isAutoSummaryEnabled.value) {
-                _showArchitectSummary.value = true
+                if (_isAutoSummaryEnabled.value) {
+                    _showArchitectSummary.value = true
+                } else {
+                    addArchitectFeedback(
+                        session.id,
+                        "Projektplan erstellt. Oeffne die Summary oder starte die Discovery neu."
+                    )
+                }
             }
-        } else {
-            Log.e("ArchitectJSON", "JSON-Parsing fehlgeschlagen")
+            is ScaffoldParseResult.Error -> {
+                Log.e("ArchitectJSON", result.message, result.cause)
+                addArchitectFeedback(
+                    session.id,
+                    "Der Projektplan konnte nicht verarbeitet werden. Details: ${result.message}"
+                )
+            }
         }
+    }
+
+    private suspend fun addArchitectFeedback(sessionId: String, message: String) {
+        val feedback = Message(
+            sessionId = sessionId,
+            role = MessageRole.ASSISTANT,
+            content = message
+        )
+        repository.addMessage(feedback)
+        _messages.value = _messages.value + feedback
     }
 
     fun resetArchitectSummary() {
@@ -521,6 +542,14 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     addMessage(assistantMsg)
 
                     repository.updateAgent(agent.copy(lastRunAt = System.currentTimeMillis()))
+
+                    // Architect Flow: JSON aus Antwort extrahieren, wenn Architect geantwortet hat
+                    if (agent.name == "Architect") {
+                        extractAndParseArchitectJSON(
+                            projectId = session.projectId,
+                            architectMessage = result.output
+                        )
+                    }
                 } else {
                     val errorText = result.error ?: "Unbekannter Fehler"
                     Log.e("AgentViewModel", "Chat error: $errorText")
