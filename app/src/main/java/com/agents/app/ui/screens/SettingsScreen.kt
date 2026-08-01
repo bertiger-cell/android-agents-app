@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.agents.app.data.ArchitectConfigRepository
 import com.agents.app.data.ProviderCredentials
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +56,7 @@ fun SettingsScreen(
     var editedArchitectModel by remember { mutableStateOf(architectModel) }
     val context = LocalContext.current
     val architectConfigRepository = remember(context) { ArchitectConfigRepository(context) }
+    val scope = rememberCoroutineScope()
     val isArchitectEnabled by architectConfigRepository.isArchitectEnabled.collectAsState(initial = false)
 
     LaunchedEffect(credentials) {
@@ -210,7 +212,9 @@ fun SettingsScreen(
                         Switch(
                             checked = isArchitectEnabled,
                             onCheckedChange = { enabled ->
-                                architectConfigRepository.setArchitectEnabled(enabled)
+                                scope.launch {
+                                    architectConfigRepository.setArchitectEnabled(enabled)
+                                }
                             }
                         )
                     }
