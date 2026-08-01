@@ -2,10 +2,12 @@ package com.agents.app.ui
 
 import android.app.Application
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.agents.app.AgentRepository
+import com.agents.app.AttachmentInput
 import com.agents.app.ScaffoldParseResult
 import com.agents.app.AgentsApplication
 import com.agents.app.ai.AIProviderService
@@ -76,6 +78,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _transferMessage = MutableStateFlow<String?>(null)
     val transferMessage: StateFlow<String?> = _transferMessage.asStateFlow()
+
+    private val _pendingAttachments = MutableStateFlow<List<MessageAttachment>>(emptyList())
+    val pendingAttachments: StateFlow<List<MessageAttachment>> = _pendingAttachments.asStateFlow()
+
+    private val _attachmentsByMessage = MutableStateFlow<Map<String, List<MessageAttachment>>>(emptyMap())
+    val attachmentsByMessage: StateFlow<Map<String, List<MessageAttachment>>> = _attachmentsByMessage.asStateFlow()
 
     private var lastSubmittedMessage: String? = null
 
@@ -553,11 +561,74 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
 
 
+    // ===== MESSAGE ATTACHMENTS (Phase 2) =====
+
+    fun addPendingAttachment(uri: Uri) {
+        val session = _selectedSession.value ?: return
+        viewModelScope.launch {
+            try {
+                val resolver = getApplication<AgentsApplication>().contentResolver
+                val displayName = queryDisplayName(resolver, uri)
+                val sizeBytes = querySize(resolver, uri)
+                val mimeType = resolver.getType(uri) ?: "application/octet-stream"
+                val localPath = withContext(Dispatchers.IO) {
+                    resolver.openInputStream(uri)?.use { input ->
+                        repository.copyAttachmentToProject(session.projectId, input, displayName)
+                    } ?: throw Exception("Datei konnte nicht gelesen werden")
+                }
+                val attachment = MessageAttachment(
+                    messageId = "pending",
+                    sessionId = session.id,
+                    displayName = displayName,
+                    mimeType = mimeType,
+                    localPath = localPath,
+                    sizeBytes = sizeBytes
+                )
+                _pendingAttachments.value = _pendingAttachments.value + attachment
+            } catch (e: Exception) {
+                Log.e("AgentViewModel", "Attachment failed", e)
+                _currentError.value =
+                    "Anhang konnte nicht hinzugefuegt werden: ${e.message ?: "Unbekannter Fehler"}"
+            }
+        }
+    }
+
+    fun removePendingAttachment(attachment: MessageAttachment) {
+        _pendingAttachments.value = _pendingAttachments.value.filterNot { it.id == attachment.id }
+    }
+
+    private suspend fun loadAttachmentsForSession(sessionId: String) {
+        val attachments = repository.getAttachmentsForSession(sessionId)
+        _attachmentsByMessage.value = attachments.groupBy { it.messageId }
+    }
+
+    private fun queryDisplayName(resolver: android.content.ContentResolver, uri: Uri): String {
+        resolver.query(uri, null, null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (index >= 0 && cursor.moveToFirst() && !cursor.isNull(index)) {
+                return cursor.getString(index)
+            }
+        }
+        return uri.lastPathSegment ?: "anhang"
+    }
+
+    private fun querySize(resolver: android.content.ContentResolver, uri: Uri): Long {
+        resolver.query(uri, null, null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (index >= 0 && cursor.moveToFirst() && !cursor.isNull(index)) {
+                return cursor.getLong(index)
+            }
+        }
+        return 0L
+    }
+
     // ===== SESSION MANAGEMENT =====
 
     fun selectSession(session: ChatSessionEntity?) {
         _selectedSession.value = session
         _messages.value = emptyList()
+        _pendingAttachments.value = emptyList()
+        _attachmentsByMessage.value = emptyMap()
         _currentError.value = null
         lastSubmittedMessage = null
         messagesJob?.cancel()
@@ -567,6 +638,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 repository.getMessagesBySession(session.id).collect { messageList ->
                     _messages.value = messageList
                 }
+            }
+            viewModelScope.launch {
+                loadAttachmentsForSession(session.id)
             }
         }
     }
@@ -585,9 +659,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     // ===== CHAT =====
 
-    fun sendMessage(content: String) {
+    fun sendMessage(content: String, attachments: List<MessageAttachment> = emptyList()) {
         val session = _selectedSession.value ?: return
-        if (content.isBlank()) return
+        if (content.isBlank() && attachments.isEmpty()) return
 
         viewModelScope.launch {
             _isLoading.value = true
@@ -643,6 +717,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     userMessage = content,
                     apiKey = apiKey,
                     baseUrl = baseUrl,
+                    attachments = attachments.map {
+                        AttachmentInput(it.displayName, it.mimeType, it.localPath, it.sizeBytes)
+                    }
                 )
 
                 if (result.success && result.output.isNotBlank()) {
@@ -688,6 +765,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 _currentError.value = errorText
             } finally {
                 _isLoading.value = false
+                _pendingAttachments.value = emptyList()
+                // DB als Quelle der Wahrheit laden, damit Attachment-IDs zu den Nachrichten passen
+                val freshMessages = repository.getMessagesBySession(session.id).first()
+                _messages.value = freshMessages
+                loadAttachmentsForSession(session.id)
             }
         }
     }

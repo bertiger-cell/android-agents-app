@@ -9,6 +9,7 @@ import com.agents.app.models.AIProvider
 import com.agents.app.models.Agent
 import com.agents.app.models.ChatSessionEntity
 import com.agents.app.models.Message
+import com.agents.app.models.MessageAttachment
 import com.agents.app.models.MessageRole
 import com.agents.app.models.ProjectEntity
 import com.google.gson.Gson
@@ -85,6 +86,35 @@ class ProjectTransferTest {
         assertEquals(0, parsed.messages[0].sessionIndex)
         assertEquals(MessageRole.USER, parsed.messages[0].role)
         assertEquals("Hallo", parsed.messages[0].content)
+    }
+
+    @Test
+    fun manifest_roundtrip_includesAttachments() {
+        val attachment = MessageAttachment(
+            id = "att1",
+            messageId = "m1",
+            sessionId = "s1",
+            displayName = "bild.png",
+            mimeType = "image/png",
+            localPath = "/tmp/p1/media/bild.png",
+            sizeBytes = 2048
+        )
+        val manifest = buildTransferManifest(
+            project,
+            listOf(agent),
+            listOf(session),
+            listOf(message),
+            listOf(attachment)
+        )
+        val parsed = parseTransferManifest(Gson().toJson(manifest))
+
+        assertEquals(1, parsed.attachments.size)
+        assertEquals("bild.png", parsed.attachments[0].displayName)
+        assertEquals("image/png", parsed.attachments[0].mimeType)
+        assertEquals(0, parsed.attachments[0].sessionIndex)
+        assertEquals(0, parsed.attachments[0].messageIndex)
+        assertEquals("media/bild.png", parsed.attachments[0].relativePath)
+        assertEquals(2048L, parsed.attachments[0].sizeBytes)
     }
 
     @Test

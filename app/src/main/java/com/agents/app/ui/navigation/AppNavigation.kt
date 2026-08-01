@@ -71,6 +71,8 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val isTransferring by viewModel.isTransferring.collectAsState()
     val transferMessage by viewModel.transferMessage.collectAsState()
     val agentTemplates by viewModel.agentTemplates.collectAsState()
+    val pendingAttachments by viewModel.pendingAttachments.collectAsState()
+    val attachmentsByMessage by viewModel.attachmentsByMessage.collectAsState()
     val topLevelDestination = resolveTopLevelDestination(currentRoute, selectedSession != null)
 
     // Generation-Complete Event: Toast bei Erfolg/Fehler
@@ -344,8 +346,16 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                         agent = sessionAgent,
                         messages = messages,
                         isLoading = isLoading,
-                        onSendMessage = { content ->
-                            viewModel.sendMessage(content)
+                        pendingAttachments = pendingAttachments,
+                        attachmentsByMessage = attachmentsByMessage,
+                        onAttachmentPicked = { uri ->
+                            viewModel.addPendingAttachment(uri)
+                        },
+                        onRemovePendingAttachment = { attachment ->
+                            viewModel.removePendingAttachment(attachment)
+                        },
+                        onSendMessage = { content, attachments ->
+                            viewModel.sendMessage(content, attachments)
                         },
                         onNavigateBack = {
                             viewModel.selectSession(null)

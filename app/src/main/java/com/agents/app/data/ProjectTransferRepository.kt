@@ -6,6 +6,7 @@ import com.agents.app.models.Agent
 import com.agents.app.models.AIProvider
 import com.agents.app.models.ChatSessionEntity
 import com.agents.app.models.Message
+import com.agents.app.models.MessageAttachment
 import com.agents.app.models.MessageRole
 import com.agents.app.models.ProjectEntity
 import com.google.gson.Gson
@@ -32,7 +33,8 @@ data class TransferManifest(
     val project: TransferProject,
     val agents: List<TransferAgent> = emptyList(),
     val sessions: List<TransferSession> = emptyList(),
-    val messages: List<TransferMessage> = emptyList()
+    val messages: List<TransferMessage> = emptyList(),
+    val attachments: List<TransferAttachment> = emptyList()
 )
 
 data class TransferProject(
@@ -72,16 +74,27 @@ data class TransferMessage(
     val timestamp: Long
 )
 
+data class TransferAttachment(
+    val sessionIndex: Int,
+    val messageIndex: Int,
+    val displayName: String,
+    val mimeType: String = "application/octet-stream",
+    val relativePath: String,
+    val sizeBytes: Long = 0
+)
+
 // ---- Pure (JVM-testbare) Helfer ----
 
 fun buildTransferManifest(
     project: ProjectEntity,
     agents: List<Agent>,
     sessions: List<ChatSessionEntity>,
-    messages: List<Message>
+    messages: List<Message>,
+    attachments: List<MessageAttachment> = emptyList()
 ): TransferManifest {
     val agentIndexById = agents.mapIndexed { index, agent -> agent.id to index }.toMap()
     val sessionIndexById = sessions.mapIndexed { index, session -> session.id to index }.toMap()
+    val messageIndexById = messages.mapIndexed { index, message -> message.id to index }.toMap()
     return TransferManifest(
         project = TransferProject(
             name = project.name,
@@ -122,6 +135,18 @@ fun buildTransferManifest(
                 timestamp = message.timestamp
             )
         },
+        attachments = attachments.map { attachment ->
+            TransferAttachment(
+                sessionIndex = sessionIndexById[attachment.sessionId] ?: -1,
+                messageIndex = messageIndexById[attachment.messageId] ?: -1,
+                displayName = attachment.displayName,
+                mimeType = attachment.mimeType,
+                relativePath = attachment.localPath
+                    .removePrefix(project.folderPath + File.separator)
+                    .replace(File.separatorChar, '/'),
+                sizeBytes = attachment.sizeBytes
+            )
+        }
     )
 }
 
@@ -171,6 +196,7 @@ class ProjectTransferRepository(
     private val messageDao = database.messageDao()
     private val projectDao = database.projectDao()
     private val chatSessionDao = database.chatSessionDao()
+    private val messageAttachmentDao = database.messageAttachmentDao()
 
     suspend fun exportProject(project: ProjectEntity, output: OutputStream) {
         val agents = agentDao.getAgentsByProject(project.id).first()
@@ -178,7 +204,10 @@ class ProjectTransferRepository(
         val messages = sessions.flatMap { session ->
             messageDao.getMessagesBySession(session.id).first()
         }
-        val manifest = buildTransferManifest(project, agents, sessions, messages)
+        val attachments = sessions.flatMap { session ->
+            messageAttachmentDao.getAttachmentsBySession(session.id)
+        }
+        val manifest = buildTransferManifest(project, agents, sessions, messages, attachments)
 
         val entries = mutableListOf<Pair<String, ByteArray>>()
         entries.add(MANIFEST_NAME to transferGson.toJson(manifest).toByteArray(Charsets.UTF_8))
@@ -256,6 +285,45 @@ class ProjectTransferRepository(
             )
             index to newId
         }.toMap()
+
+        val newMessageIds = manifest.messages.mapIndexedNotNull { index, message ->
+            val sessionId = newSessionIds[message.sessionIndex]
+            if (sessionId != null) {
+                val newId = UUID.randomUUID().toString()
+                messageDao.insertMessage(
+                    Message(
+                        id = newId,
+                        sessionId = sessionId,
+                        role = message.role,
+                        content = message.content,
+                        isInternalThought = message.isInternalThought,
+                        tokenCount = message.tokenCount,
+                        timestamp = message.timestamp
+                    )
+                )
+                index to newId
+            } else {
+                null
+            }
+        }.toMap()
+
+        manifest.attachments.forEach { attachment ->
+            val sessionId = newSessionIds[attachment.sessionIndex]
+            val messageId = newMessageIds[attachment.messageIndex]
+            if (sessionId != null && messageId != null) {
+                messageAttachmentDao.insertAttachment(
+                    MessageAttachment(
+                        id = UUID.randomUUID().toString(),
+                        messageId = messageId,
+                        sessionId = sessionId,
+                        displayName = attachment.displayName,
+                        mimeType = attachment.mimeType,
+                        localPath = File(newFolder, attachment.relativePath).absolutePath,
+                        sizeBytes = attachment.sizeBytes
+                    )
+                )
+            }
+        }
 
         entries.forEach { (name, bytes) ->
             if (name != MANIFEST_NAME) {

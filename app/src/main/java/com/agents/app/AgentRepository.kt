@@ -4,8 +4,10 @@ import android.content.Context
 import com.agents.app.ai.AIProviderService
 import com.agents.app.db.AgentDatabase
 import com.agents.app.models.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -51,6 +53,13 @@ sealed class ScaffoldParseResult {
     data class Error(val message: String, val cause: Throwable? = null) : ScaffoldParseResult()
 }
 
+data class AttachmentInput(
+    val displayName: String,
+    val mimeType: String,
+    val localPath: String,
+    val sizeBytes: Long
+)
+
 class AgentRepository(
     private val database: AgentDatabase,
     private val context: Context
@@ -59,6 +68,7 @@ class AgentRepository(
     private val messageDao = database.messageDao()
     private val projectDao = database.projectDao()
     private val chatSessionDao = database.chatSessionDao()
+    private val messageAttachmentDao = database.messageAttachmentDao()
     private val aiService = AIProviderService()
 
     // --- Project operations ---
@@ -191,7 +201,7 @@ class AgentRepository(
         role: MessageRole,
         content: String,
         isInternalThought: Boolean = false
-    ) {
+    ): Message {
         val message = Message(
             id = UUID.randomUUID().toString(),
             sessionId = sessionId,
@@ -202,10 +212,35 @@ class AgentRepository(
             timestamp = System.currentTimeMillis()
         )
         messageDao.insertMessage(message)
+        return message
     }
 
     suspend fun deleteMessagesBySession(sessionId: String) =
         messageDao.deleteMessagesBySession(sessionId)
+
+    // --- Message Attachments (Phase 2) ---
+
+    suspend fun copyAttachmentToProject(
+        projectId: String,
+        input: java.io.InputStream,
+        displayName: String
+    ): String {
+        val project = projectDao.getProjectById(projectId)
+            ?: throw Exception("Projekt nicht gefunden")
+        val mediaDir = File(project.folderPath, "media").apply { mkdirs() }
+        val safeName = displayName.replace(Regex("[^a-zA-Z0-9._-]+"), "_").ifBlank { "anhang" }
+        val target = File(mediaDir, safeName)
+        return withContext(Dispatchers.IO) {
+            target.outputStream().use { out -> input.copyTo(out) }
+            target.absolutePath
+        }
+    }
+
+    fun getAttachmentsByMessage(messageId: String): Flow<List<MessageAttachment>> =
+        messageAttachmentDao.getAttachmentsByMessage(messageId)
+
+    suspend fun getAttachmentsForSession(sessionId: String): List<MessageAttachment> =
+        messageAttachmentDao.getAttachmentsBySession(sessionId)
 
     // --- Project Diary --------------------------------------------------
 
@@ -230,7 +265,8 @@ class AgentRepository(
         agentId: String,
         userMessage: String,
         apiKey: String,
-        baseUrl: String
+        baseUrl: String,
+        attachments: List<AttachmentInput> = emptyList()
     ): AgentResult {
         // 1. Agent laden
         val agent = agentDao.getAgentById(agentId)
@@ -240,11 +276,26 @@ class AgentRepository(
         val session = getOrCreateSession(agentId)
 
         // 3. User-Message speichern
-        addMessage(
+        val userMsg = addMessage(
             sessionId = session.id,
             role = MessageRole.USER,
             content = userMessage
         )
+
+        // 3b. Attachments der User-Message zuordnen
+        attachments.forEach { input ->
+            messageAttachmentDao.insertAttachment(
+                MessageAttachment(
+                    id = UUID.randomUUID().toString(),
+                    messageId = userMsg.id,
+                    sessionId = session.id,
+                    displayName = input.displayName,
+                    mimeType = input.mimeType,
+                    localPath = input.localPath,
+                    sizeBytes = input.sizeBytes
+                )
+            )
+        }
 
         // 4. Message-History laden (auf letzte N begrenzen)
         val history = messageDao.getMessagesBySession(session.id).first()

@@ -67,6 +67,40 @@ data class Message(
     val timestamp: Long = System.currentTimeMillis()
 )
 
+// Chat Message Attachment (Phase 2)
+@Stable
+@Entity(
+    tableName = "message_attachments",
+    foreignKeys = [
+        ForeignKey(
+            entity = Message::class,
+            parentColumns = ["id"],
+            childColumns = ["messageId"],
+            onDelete = ForeignKey.CASCADE
+        ),
+        ForeignKey(
+            entity = ChatSessionEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["sessionId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [
+        Index(value = ["messageId"]),
+        Index(value = ["sessionId"])
+    ]
+)
+data class MessageAttachment(
+    @PrimaryKey
+    val id: String = UUID.randomUUID().toString(),
+    val messageId: String,
+    val sessionId: String,
+    val displayName: String,
+    val mimeType: String = "application/octet-stream",
+    val localPath: String,
+    val sizeBytes: Long = 0
+)
+
 enum class MessageRole {
     SYSTEM,
     USER,

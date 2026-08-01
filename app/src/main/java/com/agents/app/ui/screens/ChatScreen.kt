@@ -1,5 +1,10 @@
 package com.agents.app.ui.screens
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,11 +21,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
@@ -52,9 +61,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.agents.app.models.MessageAttachment
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.agents.app.models.Agent
 import com.agents.app.models.ChatSessionEntity
 import com.agents.app.models.Message
@@ -68,7 +82,11 @@ fun ChatScreen(
     agent: Agent,
     messages: List<Message>,
     isLoading: Boolean,
-    onSendMessage: (String) -> Unit,
+    pendingAttachments: List<MessageAttachment> = emptyList(),
+    attachmentsByMessage: Map<String, List<MessageAttachment>> = emptyMap(),
+    onAttachmentPicked: (Uri) -> Unit = {},
+    onRemovePendingAttachment: (MessageAttachment) -> Unit = {},
+    onSendMessage: (String, List<MessageAttachment>) -> Unit,
     onNavigateBack: () -> Unit,
     onSettings: () -> Unit = {},
     onRenameSession: (String) -> Unit = {},
@@ -80,6 +98,14 @@ fun ChatScreen(
     var showTitleDialog by remember { mutableStateOf(false) }
     var editTitle by rememberSaveable(session.id) { mutableStateOf(session.title) }
     val listState = rememberLazyListState()
+
+    val imageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let(onAttachmentPicked) }
+
+    val fileLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(onAttachmentPicked) }
 
     LaunchedEffect(session.id) {
         editTitle = session.title
@@ -158,7 +184,10 @@ fun ChatScreen(
                 contentPadding = PaddingValues(vertical = 12.dp)
             ) {
                 items(messages, key = { it.id }) { message ->
-                    MessageBubble(message = message)
+                    MessageBubble(
+                        message = message,
+                        attachments = attachmentsByMessage[message.id].orEmpty()
+                    )
                 }
 
                 if (isLoading && messages.lastOrNull()?.role == MessageRole.USER) {
@@ -186,6 +215,22 @@ fun ChatScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Divider()
+                    if (pendingAttachments.isNotEmpty()) {
+                        LazyRow(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(pendingAttachments.size) { index ->
+                                val attachment = pendingAttachments[index]
+                                PendingAttachmentChip(
+                                    attachment = attachment,
+                                    onRemove = { onRemovePendingAttachment(attachment) }
+                                )
+                            }
+                        }
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -205,13 +250,35 @@ fun ChatScreen(
                             )
                         )
                         IconButton(
+                            onClick = { imageLauncher.launch(null) },
+                            enabled = !isLoading
+                        ) {
+                            Icon(
+                                Icons.Filled.Image,
+                                contentDescription = "Bild anhaengen",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        IconButton(
                             onClick = {
-                                if (inputText.isNotBlank()) {
-                                    onSendMessage(inputText.trim())
+                                fileLauncher.launch(arrayOf("*/*"))
+                            },
+                            enabled = !isLoading
+                        ) {
+                            Icon(
+                                Icons.Filled.AttachFile,
+                                contentDescription = "Datei anhaengen",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                if (inputText.isNotBlank() || pendingAttachments.isNotEmpty()) {
+                                    onSendMessage(inputText.trim(), pendingAttachments)
                                     inputText = ""
                                 }
                             },
-                            enabled = inputText.isNotBlank() && !isLoading
+                            enabled = (inputText.isNotBlank() || pendingAttachments.isNotEmpty()) && !isLoading
                         ) {
                             Icon(
                                 Icons.Filled.Send,
@@ -335,7 +402,10 @@ private fun ErrorBubble(
 }
 
 @Composable
-fun MessageBubble(message: Message) {
+fun MessageBubble(
+    message: Message,
+    attachments: List<MessageAttachment> = emptyList()
+) {
     val isUser = message.role == MessageRole.USER
 
     Row(
@@ -370,6 +440,25 @@ fun MessageBubble(message: Message) {
                     }
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+                if (attachments.isNotEmpty()) {
+                    attachments.forEach { attachment ->
+                        if (attachment.mimeType.startsWith("image/")) {
+                            AttachmentImage(
+                                attachment = attachment,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 2.dp)
+                            )
+                        } else {
+                            AttachmentChip(
+                                attachment = attachment,
+                                isUser = isUser,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
                 Text(
                     text = message.content,
                     style = MaterialTheme.typography.bodyLarge,
@@ -393,5 +482,145 @@ fun MessageBubble(message: Message) {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AttachmentImage(
+    attachment: MessageAttachment,
+    modifier: Modifier = Modifier
+) {
+    var bitmap by remember(attachment.localPath) { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+
+    LaunchedEffect(attachment.localPath) {
+        bitmap = withContext(Dispatchers.IO) {
+            val options = BitmapFactory.Options().apply { inSampleSize = 4 }
+            BitmapFactory.decodeFile(attachment.localPath, options)?.asImageBitmap()
+        }
+    }
+
+    val current = bitmap
+    if (current != null) {
+        Image(
+            bitmap = current,
+            contentDescription = attachment.displayName,
+            modifier = modifier.clip(RoundedCornerShape(8.dp))
+        )
+    } else {
+        Surface(
+            modifier = modifier.clip(RoundedCornerShape(8.dp)),
+            color = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            Text(
+                text = attachment.displayName,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(10.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AttachmentChip(
+    attachment: MessageAttachment,
+    isUser: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        color = if (isUser) {
+            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.15f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant
+        }
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                Icons.Filled.AttachFile,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = if (isUser) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+            Column {
+                Text(
+                    text = attachment.displayName,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (isUser) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
+                if (attachment.sizeBytes > 0) {
+                    Text(
+                        text = formatAttachmentSize(attachment.sizeBytes),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isUser) {
+                            MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingAttachmentChip(
+    attachment: MessageAttachment,
+    onRemove: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = MaterialTheme.colorScheme.secondaryContainer
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 10.dp, top = 4.dp, bottom = 4.dp, end = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                Icons.Filled.AttachFile,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Text(
+                text = attachment.displayName,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            IconButton(onClick = onRemove, modifier = Modifier.size(24.dp)) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Entfernen",
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+        }
+    }
+}
+
+private fun formatAttachmentSize(sizeBytes: Long): String {
+    return when {
+        sizeBytes >= 1024 * 1024 -> "%.1f MB".format(sizeBytes / (1024.0 * 1024.0))
+        sizeBytes >= 1024 -> "%.1f KB".format(sizeBytes / 1024.0)
+        else -> "$sizeBytes B"
     }
 }
