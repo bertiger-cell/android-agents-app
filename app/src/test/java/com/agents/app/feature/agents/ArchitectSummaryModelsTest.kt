@@ -1,4 +1,4 @@
-package com.agents.app.ui.screens
+package com.agents.app.feature.agents
 
 import com.agents.app.models.AgentSpec
 import org.junit.Test

@@ -21,7 +21,12 @@ import com.agents.app.models.ProjectEntity
 import com.agents.app.models.AgentSpec
 import com.agents.app.models.ChatSessionEntity
 import com.agents.app.ui.AgentViewModel
-import com.agents.app.ui.screens.*
+import com.agents.app.feature.agents.ArchitectSummaryScreen
+import com.agents.app.feature.agents.CreateAgentScreen
+import com.agents.app.feature.chat.ChatScreen
+import com.agents.app.feature.projects.ProjectDetailWithTabsScreen
+import com.agents.app.feature.projects.ProjectListScreen
+import com.agents.app.feature.settings.SettingsScreen
 import android.widget.Toast
 import kotlinx.coroutines.launch
 

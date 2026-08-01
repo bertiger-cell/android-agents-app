@@ -1,4 +1,4 @@
-package com.agents.app.ui.screens
+package com.agents.app.feature.projects
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

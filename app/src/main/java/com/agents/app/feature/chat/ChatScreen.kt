@@ -1,4 +1,4 @@
-package com.agents.app.ui.screens
+package com.agents.app.feature.chat
 
 import android.graphics.BitmapFactory
 import android.net.Uri

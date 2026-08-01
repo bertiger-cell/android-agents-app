@@ -1,4 +1,4 @@
-package com.agents.app.ui.screens
+package com.agents.app.feature.agents
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
