@@ -1,23 +1,64 @@
 package com.agents.app.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.agents.app.models.Agent
 import com.agents.app.models.ChatSessionEntity
 import com.agents.app.models.Message
 import com.agents.app.models.MessageRole
+import com.agents.app.ui.AgentViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,21 +73,32 @@ fun ChatScreen(
     onRenameSession: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var inputText by remember { mutableStateOf("") }
+    val viewModel: AgentViewModel = viewModel()
+    val currentError by viewModel.currentError.collectAsState()
+    var inputText by rememberSaveable(session.id) { mutableStateOf("") }
     var showTitleDialog by remember { mutableStateOf(false) }
-    var editTitle by remember { mutableStateOf(session.title) }
+    var editTitle by rememberSaveable(session.id) { mutableStateOf(session.title) }
     val listState = rememberLazyListState()
 
-    // Auto-scroll only when a new message arrives (not on every streaming token).
-    // Avoids fighting with manual scrolling by checking if already near bottom.
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
+    LaunchedEffect(session.id) {
+        editTitle = session.title
+        inputText = ""
+    }
+
+    LaunchedEffect(messages.size, currentError) {
+        if (messages.isNotEmpty() || currentError != null) {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            val nearBottom = lastVisible >= messages.size - 3
-            if (nearBottom) {
-                listState.animateScrollToItem(messages.size - 1)
-            } else {
-                listState.scrollToItem(messages.size - 1)
+            val targetIndex = when {
+                currentError != null -> messages.size
+                else -> messages.lastIndex
+            }
+            val nearBottom = lastVisible >= targetIndex - 3
+            if (targetIndex >= 0) {
+                if (nearBottom) {
+                    listState.animateScrollToItem(targetIndex)
+                } else {
+                    listState.scrollToItem(targetIndex)
+                }
             }
         }
     }
@@ -55,17 +107,20 @@ fun ChatScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            session.title,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.clickable { 
+                            text = session.title,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            modifier = Modifier.clickable {
                                 editTitle = session.title
-                                showTitleDialog = true 
+                                showTitleDialog = true
                             }
                         )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            agent.name,
+                            text = "Agent: ${agent.name} | Session: ${session.id.take(8)}",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -73,11 +128,16 @@ fun ChatScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "SchlieBen")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onSettings) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Settings")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         }
@@ -100,70 +160,71 @@ fun ChatScreen(
                     MessageBubble(message = message)
                 }
 
-                // Typing indicator while streaming
                 if (isLoading && messages.lastOrNull()?.role == MessageRole.USER) {
                     item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                "Thinking...",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
+                        ThinkingBubble()
+                    }
+                }
+
+                if (!currentError.isNullOrBlank()) {
+                    item {
+                        ErrorBubble(
+                            message = currentError.orEmpty(),
+                            onRetry = { viewModel.retryLastMessage() }
+                        )
                     }
                 }
             }
 
-            // Input area
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 2.dp
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    OutlinedTextField(
-                        value = inputText,
-                        onValueChange = { inputText = it },
-                        label = { Text("Type a message...") },
-                        modifier = Modifier.weight(1f),
-                        enabled = !isLoading,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                        )
-                    )
-                    IconButton(
-                        onClick = {
-                            if (inputText.isNotBlank()) {
-                                onSendMessage(inputText)
-                                inputText = ""
-                            }
-                        },
-                        enabled = inputText.isNotBlank() && !isLoading
+                    Divider()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            Icons.Filled.Send,
-                            contentDescription = "Send",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(28.dp)
+                        OutlinedTextField(
+                            value = inputText,
+                            onValueChange = { inputText = it },
+                            label = { Text("Type a message...") },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isLoading,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                            )
                         )
+                        IconButton(
+                            onClick = {
+                                if (inputText.isNotBlank()) {
+                                    onSendMessage(inputText.trim())
+                                    inputText = ""
+                                }
+                            },
+                            enabled = inputText.isNotBlank() && !isLoading
+                        ) {
+                            Icon(
+                                Icons.Filled.Send,
+                                contentDescription = "Send",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
                     }
                 }
             }
         }
     }
 
-    // Title edit dialog
     if (showTitleDialog) {
         AlertDialog(
             onDismissRequest = { showTitleDialog = false },
@@ -179,8 +240,9 @@ fun ChatScreen(
             },
             confirmButton = {
                 Button(onClick = {
-                    if (editTitle.isNotBlank()) {
-                        onRenameSession(editTitle.trim())
+                    val trimmed = editTitle.trim()
+                    if (trimmed.isNotBlank()) {
+                        onRenameSession(trimmed)
                         showTitleDialog = false
                     }
                 }) {
@@ -193,6 +255,81 @@ fun ChatScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun ThinkingBubble() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Surface(
+            shape = RoundedCornerShape(
+                topStart = 4.dp,
+                topEnd = 16.dp,
+                bottomStart = 16.dp,
+                bottomEnd = 16.dp
+            ),
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            tonalElevation = 1.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    "Thinking...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ErrorBubble(
+    message: String,
+    onRetry: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Start
+    ) {
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.errorContainer,
+            tonalElevation = 1.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp)
+            ) {
+                Text(
+                    text = "Network Error",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                TextButton(onClick = onRetry) {
+                    Icon(
+                        Icons.Filled.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Retry")
+                }
+            }
+        }
     }
 }
 
@@ -222,6 +359,16 @@ fun MessageBubble(message: Message) {
             Column(
                 modifier = Modifier.padding(14.dp)
             ) {
+                Text(
+                    text = if (isUser) "You" else "Assistant",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isUser) {
+                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    }
+                )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = message.content,
                     style = MaterialTheme.typography.bodyLarge,

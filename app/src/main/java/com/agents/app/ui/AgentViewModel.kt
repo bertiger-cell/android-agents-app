@@ -59,6 +59,11 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _currentError = MutableStateFlow<String?>(null)
+    val currentError: StateFlow<String?> = _currentError.asStateFlow()
+
+    private var lastSubmittedMessage: String? = null
+
     private val _isGeneratingFiles = MutableStateFlow(false)
     val isGeneratingFiles: StateFlow<Boolean> = _isGeneratingFiles.asStateFlow()
 
@@ -456,6 +461,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     fun selectSession(session: ChatSessionEntity?) {
         _selectedSession.value = session
         _messages.value = emptyList()
+        _currentError.value = null
+        lastSubmittedMessage = null
         messagesJob?.cancel()
 
         if (session != null) {
@@ -487,6 +494,8 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             _isLoading.value = true
+            _currentError.value = null
+            lastSubmittedMessage = content
 
             // Load agent from DB as fallback if not in _agents state
             val agent = _agents.value.find { it.id == session.agentId }
@@ -498,6 +507,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     content = "Fehler: Agent nicht gefunden."
                 )
                 addMessage(errorMsg)
+                _currentError.value = "Agent nicht gefunden."
                 _isLoading.value = false
                 return@launch
             }
@@ -516,6 +526,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     content = "Fehler: Kein API-Key fur ${agent.provider.name} konfiguriert. Gehe zu Einstellungen."
                 )
                 addMessage(errorMsg)
+                _currentError.value = "Kein API-Key fur ${agent.provider.name} konfiguriert."
                 _isLoading.value = false
                 return@launch
             }
@@ -538,6 +549,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 )
 
                 if (result.success && result.output.isNotBlank()) {
+                    _currentError.value = null
                     val assistantMsg = Message(
                         sessionId = session.id,
                         role = MessageRole.ASSISTANT,
@@ -564,20 +576,28 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                         content = "Fehler: $errorText"
                     )
                     addMessage(errorMsg)
+                    _currentError.value = errorText
                 }
 
             } catch (e: Exception) {
                 Log.e("AgentViewModel", "sendMessage failed", e)
+                val errorText = e.message ?: "Unbekannter Fehler"
                 val errorMsg = Message(
                     sessionId = session.id,
                     role = MessageRole.ASSISTANT,
-                    content = "Fehler: ${e.message ?: "Unbekannter Fehler"}"
+                    content = "Fehler: $errorText"
                 )
                 addMessage(errorMsg)
+                _currentError.value = errorText
             } finally {
                 _isLoading.value = false
             }
         }
+    }
+
+    fun retryLastMessage() {
+        val message = lastSubmittedMessage ?: return
+        sendMessage(message)
     }
 
     // Helper: add message to in-memory list
