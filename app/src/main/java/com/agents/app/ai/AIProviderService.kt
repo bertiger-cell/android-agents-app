@@ -247,19 +247,18 @@ class AIProviderService {
         val request = requestBuilder.post(body).build()
         Log.d("AIProviderService", "SSE request to $endpoint, model=$model")
 
-        val response = client.newCall(request).execute()
-        Log.d("AIProviderService", "SSE response code: ${response.code}")
+        client.newCall(request).execute().use { response ->
+            Log.d("AIProviderService", "SSE response code: ${response.code}")
 
-        if (!response.isSuccessful) {
-            val errorBody = response.body?.string() ?: "Empty error"
-            Log.e("AIProviderService", "SSE error ${response.code}: ${errorBody.take(500)}")
-            throw Exception("Fehler vom Server (${response.code}): ${errorBody.take(500)}")
-        }
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: "Empty error"
+                Log.e("AIProviderService", "SSE error ${response.code}: ${errorBody.take(500)}")
+                throw Exception("Fehler vom Server (${response.code}): ${errorBody.take(500)}")
+            }
 
-        val source: BufferedSource = response.body?.source()
-            ?: throw Exception("Leere Streaming-Antwort")
+            val source: BufferedSource = response.body?.source()
+                ?: throw Exception("Leere Streaming-Antwort")
 
-        try {
             var tokenCount = 0
             while (!source.exhausted()) {
                 val line = source.readUtf8Line() ?: break
@@ -293,8 +292,6 @@ class AIProviderService {
                 }
             }
             Log.d("AIProviderService", "SSE stream complete, tokens emitted: $tokenCount")
-        } finally {
-            response.body?.close()
         }
     }.flowOn(Dispatchers.IO)
 
@@ -329,17 +326,15 @@ class AIProviderService {
         }
 
         val request = requestBuilder.post(body).build()
-        val response = client.newCall(request).execute()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: "Empty error"
+                throw Exception("Ollama streaming error (${response.code}) bei $requestUrl: ${errorBody.take(500)}")
+            }
 
-        if (!response.isSuccessful) {
-            val errorBody = response.body?.string() ?: "Empty error"
-            throw Exception("Ollama streaming error (${response.code}) bei $requestUrl: ${errorBody.take(500)}")
-        }
+            val source: BufferedSource = response.body?.source()
+                ?: throw Exception("Empty Ollama streaming response")
 
-        val source: BufferedSource = response.body?.source()
-            ?: throw Exception("Empty Ollama streaming response")
-
-        try {
             while (!source.exhausted()) {
                 val line = source.readUtf8Line() ?: continue
                 if (line.isBlank()) continue
@@ -355,8 +350,6 @@ class AIProviderService {
 
                 if (chunk.done == true) break
             }
-        } finally {
-            response.body?.close()
         }
     }.flowOn(Dispatchers.IO)
 
