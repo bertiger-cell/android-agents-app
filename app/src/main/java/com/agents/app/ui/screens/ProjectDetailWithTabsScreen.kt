@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.*
@@ -24,6 +26,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontFamily
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -47,15 +52,37 @@ fun ProjectDetailWithTabsScreen(
     onDeleteAgent: (Agent) -> Unit = {},
     onRestartArchitectDiscovery: () -> Unit = {},
     onUpdateProject: (projectId: String, name: String, description: String) -> Unit = { _, _, _ -> },
+    onExportProject: (Uri) -> Unit = {},
+    onImportProject: (Uri) -> Unit = {},
+    isTransferring: Boolean = false,
+    transferMessage: String? = null,
+    onTransferMessageShown: () -> Unit = {},
     onNavigateBack: () -> Unit
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     var deleteConfirmAgent by remember { mutableStateOf<Agent?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri -> uri?.let(onExportProject) }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> uri?.let(onImportProject) }
+
+    LaunchedEffect(transferMessage) {
+        transferMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            onTransferMessageShown()
+        }
+    }
     // Chat-Modal handled via AppNavigation Dialog
     // Chat-Modal handled via AppNavigation Dialog
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -74,6 +101,20 @@ fun ProjectDetailWithTabsScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = { exportLauncher.launch("agent-studio-project.zip") },
+                        enabled = !isTransferring
+                    ) {
+                        Icon(Icons.Filled.FileDownload, contentDescription = "Projekt exportieren")
+                    }
+                    IconButton(
+                        onClick = {
+                            importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))
+                        },
+                        enabled = !isTransferring
+                    ) {
+                        Icon(Icons.Filled.FileUpload, contentDescription = "Projekt importieren")
+                    }
                     IconButton(onClick = { showEditDialog = true }) {
                         Icon(Icons.Filled.Edit, contentDescription = "Projekt bearbeiten")
                     }
@@ -203,6 +244,7 @@ fun ProjectDetailWithTabsScreen(
             }
         )
     }
+
 }
 
 @Composable

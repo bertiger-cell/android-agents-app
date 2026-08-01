@@ -68,6 +68,8 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val projectScaffold by viewModel.projectScaffold.collectAsState()
     val showArchitectSummary by viewModel.showArchitectSummary.collectAsState()
     val isGeneratingFiles by viewModel.isGeneratingFiles.collectAsState()
+    val isTransferring by viewModel.isTransferring.collectAsState()
+    val transferMessage by viewModel.transferMessage.collectAsState()
     val topLevelDestination = resolveTopLevelDestination(currentRoute, selectedSession != null)
 
     // Generation-Complete Event: Toast bei Erfolg/Fehler
@@ -201,8 +203,10 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                 ) { backStackEntry ->
                     val projectId = backStackEntry.arguments?.getString("projectId") ?: return@composable
 
+                    val project = selectedProject ?: return@composable
+
                     ProjectDetailWithTabsScreen(
-                        project = selectedProject ?: return@composable,
+                        project = project,
                         agents = agents,
                         sessions = sessions,
                         onCreateAgent = {
@@ -222,6 +226,23 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                         },
                         onUpdateProject = { id, name, description ->
                             viewModel.updateProject(id, name, description)
+                        },
+                        onExportProject = { uri ->
+                            viewModel.exportProject(project, uri)
+                        },
+                        onImportProject = { uri ->
+                            viewModel.importProject(uri) { imported ->
+                                viewModel.selectProject(imported)
+                                navController.navigate("project/${imported.id}") {
+                                    popUpTo("projects") { inclusive = false }
+                                    launchSingleTop = true
+                                }
+                            }
+                        },
+                        isTransferring = isTransferring,
+                        transferMessage = transferMessage,
+                        onTransferMessageShown = {
+                            viewModel.clearTransferMessage()
                         },
                         onNavigateBack = {
                             navController.popBackStack()

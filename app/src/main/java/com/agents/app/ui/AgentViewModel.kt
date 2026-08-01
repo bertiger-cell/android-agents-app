@@ -1,6 +1,7 @@
 package com.agents.app.ui
 
 import android.app.Application
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,6 +14,7 @@ import com.agents.app.data.ProviderCredentials
 import com.agents.app.data.ProviderCredentialsRepository
 import com.agents.app.models.*
 import com.agents.app.data.ProjectFileWriter
+import com.agents.app.data.ProjectTransferRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
@@ -33,6 +35,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AgentRepository
     private val credentialsRepository = ProviderCredentialsRepository(application)
     private val architectConfigRepository = ArchitectConfigRepository(application)
+    private val transferRepository by lazy {
+        ProjectTransferRepository(getApplication<AgentsApplication>().database, getApplication())
+    }
     private val aiService = AIProviderService()
     private var messagesJob: Job? = null
     private var agentsJob: Job? = null
@@ -61,6 +66,12 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _currentError = MutableStateFlow<String?>(null)
     val currentError: StateFlow<String?> = _currentError.asStateFlow()
+
+    private val _isTransferring = MutableStateFlow(false)
+    val isTransferring: StateFlow<Boolean> = _isTransferring.asStateFlow()
+
+    private val _transferMessage = MutableStateFlow<String?>(null)
+    val transferMessage: StateFlow<String?> = _transferMessage.asStateFlow()
 
     private var lastSubmittedMessage: String? = null
 
@@ -174,6 +185,55 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             repository.updateProject(updated)
             _selectedProject.value = updated
         }
+    }
+
+    // ===== PROJECT EXPORT/IMPORT (Phase 2a) =====
+
+    fun exportProject(project: ProjectEntity, uri: Uri) {
+        viewModelScope.launch {
+            _isTransferring.value = true
+            _transferMessage.value = null
+            try {
+                val output = getApplication<AgentsApplication>().contentResolver
+                    .openOutputStream(uri)
+                    ?: throw Exception("Ausgabe-Stream konnte nicht geoeffnet werden")
+                output.use { stream ->
+                    transferRepository.exportProject(project, stream)
+                }
+                _transferMessage.value = "Projekt erfolgreich exportiert"
+            } catch (e: Exception) {
+                Log.e("Transfer", "Export fehlgeschlagen", e)
+                _transferMessage.value = "Export fehlgeschlagen: ${e.message ?: "Unbekannter Fehler"}"
+            } finally {
+                _isTransferring.value = false
+            }
+        }
+    }
+
+    fun importProject(uri: Uri, onImported: (ProjectEntity) -> Unit) {
+        viewModelScope.launch {
+            _isTransferring.value = true
+            _transferMessage.value = null
+            try {
+                val input = getApplication<AgentsApplication>().contentResolver
+                    .openInputStream(uri)
+                    ?: throw Exception("Eingabe-Stream konnte nicht geoeffnet werden")
+                val project = input.use { stream ->
+                    transferRepository.importProject(stream)
+                }
+                _transferMessage.value = "Projekt '${project.name}' importiert"
+                onImported(project)
+            } catch (e: Exception) {
+                Log.e("Transfer", "Import fehlgeschlagen", e)
+                _transferMessage.value = "Import fehlgeschlagen: ${e.message ?: "Unbekannter Fehler"}"
+            } finally {
+                _isTransferring.value = false
+            }
+        }
+    }
+
+    fun clearTransferMessage() {
+        _transferMessage.value = null
     }
 
     fun selectProject(project: ProjectEntity) {
@@ -545,7 +605,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                     agentId = agent.id,
                     userMessage = content,
                     apiKey = apiKey,
-                    baseUrl = baseUrl
+                    baseUrl = baseUrl,
                 )
 
                 if (result.success && result.output.isNotBlank()) {
