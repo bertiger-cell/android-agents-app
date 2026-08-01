@@ -1,6 +1,6 @@
 # Architektur - Agent Studio (android-agents-app)
 
-## Zweck (v1.0)
+## Zweck (v2.0)
 
 Android-App zur Verwaltung von KI-Projekten und -Agenten. Jedes Projekt kann
 optional mit einem Architect-Interview starten, das einen Projektplan als JSON
@@ -22,7 +22,14 @@ gestreamt gechattet werden.
 - Settings mit persistenten API-Keys und Architect-Konfiguration
 - Projekt-Dateien in der App anzeigen (`.md`, `.json`)
 - Discovery-Interview jederzeit neu starten
-- 7 Unit-Test-Suiten
+- Projekt-Export/Import als ZIP (Phase 2a, umgesetzt)
+- Session-Loeschung einzeln im UI (Phase 2)
+- Agent-Templates: eigene Vorlagen speichern/laden/loeschen (Phase 2)
+- Chat-Attachments: Bilder/Dateien anhaengen (Phase 2)
+- Projekt-Ordner mit `media/`, `audio/`, `exports/` (Phase 2)
+- Einheitliche Fehlerbehandlung (Error-Boundary Muster, Phase 2)
+- Feature-Pakete statt zentralem `ui/screens` (Phase 2)
+- 10 Unit-Test-Suiten (53 Tests)
 
 ## Optional Features
 
@@ -57,28 +64,35 @@ com.agents.app/
 ├── ai/
 │   └── AIProviderService.kt
 ├── data/
+│   ├── AgentTemplatesRepository.kt
 │   ├── ArchitectConfigRepository.kt
 │   ├── ProjectFileWriter.kt
+│   ├── ProjectTransferRepository.kt
 │   └── ProviderCredentialsRepository.kt
 ├── db/
 │   ├── AgentDao.kt
 │   ├── AgentDatabase.kt
 │   ├── ChatSessionDao.kt
+│   ├── MessageAttachmentDao.kt
 │   ├── MessageDao.kt
 │   └── ProjectDao.kt
+├── feature/
+│   ├── agents/
+│   │   ├── ArchitectSummaryScreen.kt
+│   │   └── CreateAgentScreen.kt
+│   ├── chat/
+│   │   └── ChatScreen.kt
+│   ├── projects/
+│   │   ├── ProjectDetailWithTabsScreen.kt
+│   │   └── ProjectListScreen.kt
+│   └── settings/
+│       └── SettingsScreen.kt
 ├── models/
 │   └── AgentModels.kt
 ├── ui/
 │   ├── AgentViewModel.kt
 │   ├── navigation/
 │   │   └── AppNavigation.kt
-│   ├── screens/
-│   │   ├── ArchitectSummaryScreen.kt
-│   │   ├── ChatScreen.kt
-│   │   ├── CreateAgentScreen.kt
-│   │   ├── ProjectDetailWithTabsScreen.kt
-│   │   ├── ProjectListScreen.kt
-│   │   └── SettingsScreen.kt
 │   └── theme/
 │       ├── Color.kt
 │       ├── Theme.kt
@@ -107,15 +121,17 @@ Routen in `AppNavigation.kt`:
 - `create-agent/{projectId}` - Agent anlegen
 - `settings` - Einstellungen
 
-## Datenbank (Room, Version 2)
+## Datenbank (Room, Version 3)
 
 Tabellen:
 - `projects` - Projektmetadaten + `folderPath`
 - `agents` - Agent-Konfiguration, Fremdschluessel auf Projekt (CASCADE)
 - `chat_sessions` - Session pro Agent (CASCADE)
 - `messages` - Chat-Nachrichten, Fremdschluessel auf Session (CASCADE)
+- `message_attachments` - Attachments pro Nachricht (CASCADE), Migration 2->3
 
-Alle Loeschungen kaskadieren von Projekt -> Agenten -> Sessions -> Nachrichten.
+Alle Loeschungen kaskadieren von Projekt -> Agenten -> Sessions -> Nachrichten
+(inkl. Attachments). `fallbackToDestructiveMigration()` bleibt als letzte Absicherung.
 
 ## Dateisystem
 
@@ -131,7 +147,49 @@ Projekt-Ordner unter `files/projects/<Name>_<ID>/`:
 | `SKILLS.md` | Skills fuer das Projekt |
 | `AGENTS.md` | Agenten-Rollen |
 
+Zusaetzlich legt die Projekt-Erstellung die Unterordner `media/` (Chat-
+Attachments), `audio/` und `exports/` an.
+
 Generiert durch `ProjectFileWriter`.
+
+## Projekt-Export/Import (Phase 2a)
+
+**Status:** umgesetzt (Phase 2a)
+
+**Zweck:** Projekte inklusive Metadaten, Agenten, Sessions, Nachrichten,
+Attachments und Projekt-Dateien als ZIP exportieren und wieder importieren.
+
+**Format:**
+
+```text
+agent-studio-project.zip
+├── manifest.json
+├── diary.md
+├── discovery.json
+├── ARCHITECTURE.md
+└── ...
+```
+
+`manifest.json` enthaelt das Exportformat, die Projektmetadaten sowie die
+Agenten-, Session-, Nachrichten- und Attachment-Daten. Beim Import werden neue
+IDs vergeben, damit ein importiertes Projekt nicht mit bestehenden Eintraegen
+kollidiert. Das Manifest wird mit Gson (bereits vorhandene Dependency)
+serialisiert statt `org.json`, damit die Logik in lokalen Unit-Tests laeuft.
+
+**Implementation:**
+
+- `ProjectTransferRepository` in `data/` liest/schreibt ZIP und Datenbank
+- UI im Projekt-Detail (TopAppBar) nutzt Android Storage Access Framework (SAF)
+  - Export: `ACTION_CREATE_DOCUMENT`
+  - Import: `ACTION_OPEN_DOCUMENT`
+- Keine neue Permission erforderlich
+- Keine neue Dependency; `java.util.zip` und Gson
+
+**Non-Goals fuer Phase 2a:**
+
+- Kein Cloud-Export/Import
+- Kein GitAgent-Export in diesem Task
+- Kein automatischer Import aus fremden Projekt-Ordnern
 
 ## Architect-Flow
 
@@ -216,7 +274,7 @@ Material 3 mit Dynamic Color (Android 12+) und Fallback-Palette:
 
 ## Tests
 
-7 Unit-Test-Suiten unter `app/src/test/`:
+10 Unit-Test-Suiten (53 Tests) unter `app/src/test/`:
 - JSON-Extraktion aus Architect-Antworten
 - JSON-Struktur / Modelle (Gson)
 - Agent-/Projekt-/Scaffold-Datenmodelle
@@ -224,6 +282,9 @@ Material 3 mit Dynamic Color (Android 12+) und Fallback-Palette:
 - Message-History-Begrenzung
 - Navigation- und Overlay-Regeln
 - Streaming-Parsing und Provider-Fehlerfaelle
+- Projekt-Transfer: ZIP-/Manifest-Roundtrip, Attachments, Fehlerfaelle
+- Agent-Templates: Defaults, Merge/Remove, Gson-Roundtrip
+- Projekt-Ordnerstruktur: `media/`/`audio/`/`exports/`
 
 ## Non-Goals
 

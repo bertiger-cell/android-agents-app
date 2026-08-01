@@ -6,7 +6,7 @@
 
 ---
 
-## Umgesetzt (Stand Juli 2026)
+## Umgesetzt (Stand August 2026)
 
 ### Basis & Projekt-Management
 - [x] Multi-Provider-Chat (OpenRouter, OpenCode Zen, Ollama Cloud + lokal)
@@ -30,13 +30,22 @@
 - [x] Loading-Overlay + Toast bei Datei-Generierung
 - [x] Chat mit Auto-Scroll, Session-Rename, Titel-Generierung
 - [x] Delete-Confirmation für Projekte und Agenten
-- [x] 5 Unit-Test-Suiten
+
+### Phase 2 (V2.0) – umgesetzt
+- [x] Projekt-Export/Import als ZIP (Phase 2a) inkl. `manifest.json` und Attachments
+- [x] Session-Löschung einzeln im UI (mit Bestätigung)
+- [x] Agent-Templates: persistente Vorlagen via DataStore (speichern/laden/löschen)
+- [x] Projekt-Ordnerstruktur erweitert: `media/`, `audio/`, `exports/`
+- [x] Chat-Attachments: Bilder/Dateien anhängen, Vorschau, Datei-Chips
+- [x] Error-Boundary: zentraler Fehler-State + Snackbar-Feedback
+- [x] Modulare Architektur: Feature-Pakete (`feature/projects`, `chat`, `agents`, `settings`)
+- [x] 10 Unit-Test-Suiten (53 Tests)
 
 ---
 
 ## In Arbeit / Festeigung
 
-- [ ] Doku vollständig auf aktuellen Repo-Stand bringen (laufend)
+- [x] Doku auf aktuellen Repo-Stand bringen (ARCHITECTURE/ROADMAP/CHANGELOG)
 - [ ] Performance-Verhalten bei sehr großen Sessions beobachten
 - [ ] Weitere Tests für Repository-/ViewModel-Logik
 
@@ -44,19 +53,12 @@
 
 ## Geplant / Richtung (Details folgen)
 
-- **LangChain4j + ToolRegistry** – Agent-Framework mit registrierbaren Tools
-- **On-Device-ML** – LiteRT (LLM-Inference) + MediaPipe (Vision/Audio)
-- **Vision** – Bilder analysieren (Kamera/Galerie)
-- **Bildgenerierung** – remote/on-device, speichern im Projekt-Ordner
+- **LangChain4j + ToolRegistry** – Agent-Framework mit registrierbaren Tools (Non-Goal V2)
+- **On-Device-ML** – LiteRT (LLM-Inference) + MediaPipe (Vision/Audio) (Non-Goal V2)
+- **Vision** – Bilder analysieren (Kamera/Galerie) (Non-Goal V2)
+- **Bildgenerierung** – remote/on-device, speichern im Projekt-Ordner (Non-Goal V2)
 - **Bild-Skalierung/-Bearbeitung**
-- **Speech-to-Text / Text-to-Speech**
-- **Datei-/Bild-Attachments im Chat**
-- **Ordnerstruktur erweitern** – Medien, Audio, Exports
-- **Modulare Architektur** – feature-/modulbasierte Struktur
-- **Session-Löschung** – einzelne Sessions im UI löschen
-- **Agent-Templates** – Konfigurationen speichern/wiederverwenden
-- **Export** – Projekt-Daten exportieren
-- **Error-Boundary** – robustere Fehlerbehandlung in der UI
+- **Speech-to-Text / Text-to-Speech** (Non-Goal V2)
 
 ---
 
