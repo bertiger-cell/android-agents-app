@@ -221,6 +221,9 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                         onDeleteAgent = { agent ->
                             viewModel.deleteAgent(agent)
                         },
+                        onDeleteSession = { session ->
+                            viewModel.deleteSession(session)
+                        },
                         onRestartArchitectDiscovery = {
                             viewModel.restartArchitectDiscovery(projectId)
                         },

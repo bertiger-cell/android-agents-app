@@ -296,6 +296,19 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun deleteSession(session: ChatSessionEntity) {
+        viewModelScope.launch {
+            repository.deleteSession(session)
+            _sessions.value = _sessions.value.mapValues { (_, list) ->
+                list.filterNot { it.id == session.id }
+            }
+            if (_selectedSession.value?.id == session.id) {
+                _selectedSession.value = null
+                _messages.value = emptyList()
+            }
+        }
+    }
+
     fun startChat(agentId: String) {
         viewModelScope.launch {
             val session = repository.getOrCreateSession(agentId)

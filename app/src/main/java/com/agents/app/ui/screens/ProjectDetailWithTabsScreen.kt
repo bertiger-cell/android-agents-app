@@ -50,6 +50,7 @@ fun ProjectDetailWithTabsScreen(
     onSessionSelected: (ChatSessionEntity) -> Unit,
     onNewChat: (Agent) -> Unit = {},
     onDeleteAgent: (Agent) -> Unit = {},
+    onDeleteSession: (ChatSessionEntity) -> Unit = {},
     onRestartArchitectDiscovery: () -> Unit = {},
     onUpdateProject: (projectId: String, name: String, description: String) -> Unit = { _, _, _ -> },
     onExportProject: (Uri) -> Unit = {},
@@ -61,6 +62,7 @@ fun ProjectDetailWithTabsScreen(
 ) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     var deleteConfirmAgent by remember { mutableStateOf<Agent?>(null) }
+    var deleteConfirmSession by remember { mutableStateOf<ChatSessionEntity?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -161,7 +163,8 @@ fun ProjectDetailWithTabsScreen(
                     sessions = sessions.values.flatten(),
                     onSessionSelected = { session ->
                         onSessionSelected(session)
-                    }
+                    },
+                    onDeleteSession = { session -> deleteConfirmSession = session }
                 )
                 2 -> ProjectFilesTab(
                     project = project
@@ -245,6 +248,35 @@ fun ProjectDetailWithTabsScreen(
         )
     }
 
+    // Delete Confirmation Dialog for Session
+    if (deleteConfirmSession != null) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirmSession = null },
+            title = { Text("Session loschen?") },
+            text = {
+                Text("Bist du sicher, dass du die Session '${deleteConfirmSession!!.title}' loschen moechtest?\n\n" +
+                     "Alle zugehoerigen Nachrichten werden ebenfalls geloescht.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDeleteSession(deleteConfirmSession!!)
+                        deleteConfirmSession = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Loschen")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmSession = null }) {
+                    Text("Abbrechen")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -254,6 +286,7 @@ fun AgentsTab(
     onSessionSelected: (ChatSessionEntity) -> Unit,
     onNewChat: (Agent) -> Unit = {},
     onDeleteAgent: (Agent) -> Unit = {},
+    onDeleteSession: (ChatSessionEntity) -> Unit = {},
     onRestartArchitectDiscovery: () -> Unit = {},
     onCreateAgent: () -> Unit
 ) {
@@ -324,7 +357,8 @@ fun AgentsTab(
 @Composable
 fun SessionsTab(
     sessions: List<ChatSessionEntity>,
-    onSessionSelected: (ChatSessionEntity) -> Unit
+    onSessionSelected: (ChatSessionEntity) -> Unit,
+    onDeleteSession: (ChatSessionEntity) -> Unit = {}
 ) {
     if (sessions.isEmpty()) {
         Column(
@@ -357,7 +391,8 @@ fun SessionsTab(
             items(sessions, key = { it.id }) { session ->
                 SessionListItem(
                     session = session,
-                    onSelected = { onSessionSelected(session) }
+                    onSelected = { onSessionSelected(session) },
+                    onDelete = { onDeleteSession(session) }
                 )
             }
         }
@@ -446,7 +481,8 @@ fun AgentCardWithSessions(
 @Composable
 fun SessionListItem(
     session: ChatSessionEntity,
-    onSelected: (ChatSessionEntity) -> Unit
+    onSelected: (ChatSessionEntity) -> Unit,
+    onDelete: (() -> Unit)? = null
 ) {
     Surface(
         modifier = Modifier
@@ -475,11 +511,25 @@ fun SessionListItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Icon(
-                Icons.Filled.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (onDelete != null) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Delete,
+                        contentDescription = "Session loschen",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            } else {
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
