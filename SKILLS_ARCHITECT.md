@@ -111,8 +111,8 @@ data class AgentSpec(name, description, systemPrompt, provider, model, temperatu
 |---|---|---|
 | Architect System Prompt | Settings → Architect | `DEFAULT_ARCHITECT_PROMPT` |
 | Auto-Summary Toggle | ViewModel | `true` |
-| Architect Model | ViewModel (hartkodiert) | `gpt-4o` über OpenRouter |
-| Provider | ViewModel (hartkodiert) | `OPENROUTER` |
+| Architect Model | DataStore-Konfigurationswert | Default: `gpt-4o` |
+| Provider | DataStore-Konfigurationswert | Default: `openrouter` |
 
 ## Extending
 

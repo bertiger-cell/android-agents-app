@@ -140,7 +140,7 @@ JSON → catch + Log + null (kein Crash).
 |---|---|---|
 | System Prompt | Verhalten des Architect | Siehe Prompt-Prinzipien |
 | Modell | Welches LLM | Konfigurierbar (kein Hardcode) |
-| Provider | OpenRouter, OpenAI, lokal | Konfigurierbar |
+| Provider | OpenRouter, OpenCode Zen, Ollama | Konfigurierbar |
 | Temperature | Kreativitaet | 0.7 |
 | Auto-Summary | Summary automatisch anzeigen | true |
 

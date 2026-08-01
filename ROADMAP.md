@@ -30,7 +30,7 @@
 - [x] Loading-Overlay + Toast bei Datei-Generierung
 - [x] Chat mit Auto-Scroll, Session-Rename, Titel-Generierung
 - [x] Delete-Confirmation für Projekte und Agenten
-- [x] 26 Unit-Tests
+- [x] 5 Unit-Test-Suiten
 
 ---
 

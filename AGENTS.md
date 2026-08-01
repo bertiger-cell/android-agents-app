@@ -3,7 +3,7 @@
 ## Projekt
 Android-App (Kotlin/Jetpack Compose), Multi-Provider AI-Agent
 (OpenRouter, OpenCode Zen, Ollama) mit Streaming-Chat,
-Agent-Vorlagen, Model-Picker und animiertem Intro-Screen.
+Agent-Vorlagen, Model-Picker und Dashboard/Welcome-Start.
 
 Volle Architektur: siehe `ARCHITECTURE.md`.
 Detaillierte Arbeitsregeln: siehe `RULES.md`.

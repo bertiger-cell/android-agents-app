@@ -1,154 +1,185 @@
-# DESIGN.md – Android Agents App
+# DESIGN.md – Agent Studio UI
 
-## Design Philosophy
+## Design Direction
 
-Electric dark mode with high-contrast accents. Tech/cyber aesthetic
-with deep backgrounds and vibrant violet-cyan highlights. Clean,
-functional, no visual clutter. Every element must justify its presence.
+Moderner Dark-Tech-Look mit hohem Kontrast und klarer Struktur. Deep Background,
+violette Akzente und Cyan als Sekundärfarbe. Material 3 als Basis, wenig visueller
+Clutter. Jedes Element soll funktional begründet sein.
+
+Die App nutzt auf Android 12+ standardmäßig Dynamic Color. Die hier beschriebene
+Palette ist der Dark-Fallback und die Referenz für den gewünschten Look.
 
 ## Color System
 
-### Dark Mode (Primary)
-- Background: #0D0D0D (near-black, not pure black)
-- Surface: #1A1A1A (cards, inputs)
-- Surface Variant: #252525 (elevated elements)
-- Primary: #BB86FC (vibrant violet — CTAs, active states)
-- Primary Container: #3700B3 (deep violet — headers, emphasis)
-- Secondary: #03DAC6 (cyan — tags, chips, secondary actions)
-- Secondary Container: #018786 (teal — badges)
-- Tertiary: #FF6B6B (coral red — errors, warnings, highlights)
-- Outline: #938F99 (subtle borders, dividers)
-- On-Background: #E6E1E5 (primary text — near-white, not pure white)
-- On-Primary: #000000 (text on violet buttons)
-- On-Surface: #E6E1E5 (text on dark surfaces)
-- On-Surface Variant: #CAC4D0 (secondary text, labels)
+### Dark Fallback
+
+- Background: `#0D0D0D`
+- Surface: `#1A1A1A`
+- Surface Variant: `#252525`
+- Primary: `#BB86FC`
+- Primary Container: `#3700B3`
+- Secondary: `#03DAC6`
+- Secondary Container: `#018786`
+- Tertiary: `#FF6B6B`
+- Outline: `#938F99`
+- On-Background: `#E6E1E5`
+- On-Primary: `#000000`
+- On-Surface: `#E6E1E5`
+- On-Surface Variant: `#CAC4D0`
+- Error: `#CF6679`
 
 ### Contrast Rules
-- Never use pure white (#FFFFFF) on pure black (#000000)
-- Minimum 4.5:1 contrast ratio for body text
-- Primary action buttons: violet (#BB86FC) with black text
-- Danger actions: coral (#FF6B6B) with white text
-- Disabled states: 38% opacity on primary
+
+- Kein reines Weiß auf reinem Schwarz für Fließtext
+- Body-Text mindestens 4.5:1 Kontrast
+- Primäre Buttons: violett (`#BB86FC`) mit schwarzem Text
+- Danger-Aktionen: Tertiary/Error-Farbe mit hellem Text
+- Disabled: reduzierte Opacity, keine Interaktion
 
 ## Typography
 
-### Font Stack
-- Primary: System default (Roboto on Android)
-- Monospace: For code/technical content
+Material 3 Default-Typografie mit System-Font (Roboto auf Android).
 
-### Type Scale
-- Display Large: 57sp / 64sp line-height (splash clock)
-- Headline Medium: 28sp / 36sp (screen titles)
-- Title Medium: 16sp / 24sp / Medium weight (section headers)
-- Body Large: 16sp / 24sp (primary content)
-- Body Small: 12sp / 16sp (labels, metadata)
-- Label Large: 14sp / 20sp / Medium weight (button text)
+- Display Large: 57sp / 64sp (wird aktuell nicht als Splash genutzt)
+- Headline Small/Medium: 24sp / 28sp (Seitentitel, Empty States)
+- Title Medium: 16sp / 24sp / Medium (Sektionen, Projektnamen)
+- Body Large: 16sp / 24sp (Chat-Inhalte)
+- Body Small: 12sp / 16sp (Metadaten)
+- Label Large: 14sp / 20sp / Medium (Buttons)
 
 ## Spacing & Layout
 
-### Grid
-- Base unit: 4dp
-- Screen padding: 16dp horizontal
-- Section spacing: 24dp
-- Element spacing: 8dp-16dp
-- Card padding: 16dp
-
-### Elevation & Depth
-- Cards: surfaceTonal with 2dp tonal elevation
-- Buttons: No shadow, color contrast for depth
-- FAB: Primary container color, 16dp padding
-- TopAppBar: Primary color, no elevation
+- Basis-Raster: 4dp
+- Screen-Padding: 16dp horizontal
+- Section-Spacing: 24dp
+- Element-Spacing: 8dp-16dp
+- Karten-Padding: 12dp-16dp
+- Shape-System: 8dp / 12dp / 16dp / 24dp / 32dp
 
 ## Component Patterns
 
 ### Buttons
-- Primary (Filled): Rounded 12dp, primary color (#BB86FC), black text
-- Secondary (Outlined): Rounded 12dp, outline border (#938F99), on-surface text
-- Danger (Filled): Rounded 12dp, tertiary color (#FF6B6B), white text
-- Disabled: 38% opacity, no interaction
+
+- Primary (Filled): `MaterialTheme.colorScheme.primary`, schwarzer Text im Dark-Fallback
+- Secondary (Outlined): Outline-Border, on-surface Text
+- Danger: `MaterialTheme.colorScheme.error`, heller Text
+- Disabled: Material 3 Default, keine Interaktion
 
 ### Cards
-- Rounded 16dp corners
-- Surface color (#1A1A1A) with tonal elevation
-- Subtle outline border (1dp, #938F99 at 30% opacity)
-- Hover/press: surfaceTonal shift
 
-### Input Fields (OutlinedTextField)
-- Rounded 12dp corners
-- Outline border (#938F99)
-- Focus: Primary color border (#BB86FC)
-- Background: Transparent (surface shows through)
+- RoundedCornerShape 8dp-16dp je Kontext
+- `surfaceVariant` für Listen-Karten
+- `primaryContainer` / `secondaryContainer` für Hervorhebungen
+- Keine Schatten, stattdessen Color-Depth
+
+### Input Fields
+
+- `OutlinedTextField` mit `focusedBorderColor = primary`
+- API-Keys mit Show/Hide-Toggle
+- Modelle und Provider als `ExposedDropdownMenu`
 
 ### TopAppBar
-- Primary container color (#3700B3)
-- White icons and text
-- No elevation (flat)
+
+- `containerColor = primary`
+- Titel + Back/Settings-Action
+- Keine Elevation
+
+### FAB
+
+- Dashboard: Plus für neues Projekt
+- Primary Container oder Primary Default
 
 ### Chat Bubbles
-- User: Primary color (#BB86FC), black text, right-aligned
-- Assistant: Surface (#1A1A1A), on-surface text, left-aligned
-- Max width: 300dp
-- Rounded 16dp corners
-- 12dp internal padding
 
-### Navigation
-- Bottom: Not used (top navigation only)
-- Top: Back arrow + title in TopAppBar
-- Transitions: Fade + slide (400ms)
+- User: `primary` Farbe, schwarzer Text, rechtsbündig
+- Assistant: `secondaryContainer` Farbe, on-secondary-container Text, linksbündig
+- Max Width: 300dp
+- Radius: 16dp, kleine Ecke zur jeweiligen Sprechrichtung
+- Token-Anzahl als `labelSmall` unter dem Inhalt
 
 ## Animation & Motion
 
-### Timing
-- Screen transitions: 400ms fade + slide
-- Element appearance: 300ms fade-in
-- Button press: 100ms scale-down (0.95)
-- List stagger: 50ms delay between items
-
-### Easing
-- Standard: FastOutSlowInEasing
-- Sharp: LinearEasing (for continuous animations like intro walk)
-
-## Iconography
-- Material Icons (Filled style)
-- Size: 24dp default
-- Color: Inherits from parent (on-primary, on-surface)
-
-## Special Elements
-
-### Intro Screen
-- Robot emoji (🤖) walking across screen
-- Thought bubble with rounded 20dp corners
-- Bubble tail: 12dp square with 4dp rounding
-- Background: App background color
-- Duration: 4.2 seconds total
-
-### Agent Cards
-- Left: Name (titleMedium) + description (bodySmall)
-- Right: Play + Delete icons
-- Bottom: Agent type + provider chips (AssistChip)
-
-### Model Picker
-- ExposedDropdownMenu with 12dp rounding
-- Model name (bodyLarge) + details (bodySmall)
-- Max 3 items visible before scroll
+- Navigation: 400ms Fade + Slide
+- Loading-Overlay: zentrierter `CircularProgressIndicator`
+- Chat-Auto-Scroll: animiert bei neuen Nachrichten, wenn User nahe am Ende ist
+- Kein Intro-Walk mehr; die App startet direkt im Dashboard
 
 ## Screen Layouts
 
-### HomeScreen
-- Clock: Display Large, primary color, left-aligned
-- Date: Title Medium, on-surface-variant, below clock
-- Divider: 1dp outline
-- Recent agents: Card list, max 3 items
-- Bottom: Full-width primary button
+### Dashboard / ProjectListScreen
 
-### ChatScreen
-- TopBar: Agent name (titleMedium) + model (bodySmall)
-- Messages: LazyColumn, 8dp spacing
-- Input: Row with OutlinedTextField + Send IconButton
-- Auto-scroll on new tokens
+- TopAppBar: „Agent Studio“ + Projektanzahl + Settings-Icon
+- Leerer Zustand: Welcome-Hero-Card mit „Neues Projekt mit Architect“
+- Gefüllter Zustand: „Weiter geht's!“-Card, Projekt-Cards, FAB
+- Projekt-Cards: Name, Beschreibung, Datum, Löschen-Icon
+- Create-Dialog: Name + Beschreibung, startet danach automatisch den Architect
+- Delete-Dialog: Bestätigung für Projekt inklusive Hinweis auf zugehörige Daten
 
-### SettingsScreen
-- Sections: Provider name (titleMedium) + divider
-- Inputs: OutlinedTextField with show/hide toggle
-- Test button: OutlinedButton
-- Save: Full-width primary Button
+### Project Detail / ProjectDetailWithTabsScreen
+
+- TopAppBar: Projektname, Agentenzahl, Back, Edit-Icon
+- Tabs: `Agenten`, `Sessions`, `Dateien`
+- Agenten-Tab: Empty State mit „Agent erstellen“ + „Discovery wiederholen“
+- Agenten-Karte: Name, Provider/Modell, Sessions, „Neuer Chat“, Delete
+- Sessions-Tab: Liste aller Sessions des Projekts
+- Dateien-Tab: File-Viewer mit Größe, Änderungsdatum, Refresh und Inhalt-Dialog
+- Edit-Dialog: Projektname und Beschreibung
+- Delete-Agent-Dialog: Bestätigung inklusive Cascade-Hinweis
+
+### Create Agent / CreateAgentScreen
+
+- TopAppBar mit Back
+- Quick-Start-Templates
+- Provider-Dropdown
+- Modelle laden je Provider (Ollama, OpenRouter, Zen)
+- System-Prompt als mehrzeiliges Textfeld
+- Temperatur-Regler
+- Save/Create Action
+
+### Settings / SettingsScreen
+
+- TopAppBar mit Back
+- Provider-Sektionen: OpenRouter, OpenCode Zen, Ollama
+- API-Keys mit Show/Hide
+- Ollama Base URL + Test-Connection
+- Architect-Settings als aufklappbare Card
+- Architect: Provider, Modell, System-Prompt, Speichern/Abbrechen
+
+### Chat / ChatScreen (Fullscreen-Modal)
+
+- TopAppBar: Session-Titel (klickbar für Rename), Agentenname, Back
+- Nachrichtenliste mit Auto-Scroll
+- Typing-Indicator während Streaming
+- Input-Zeile: `OutlinedTextField` + Send-Icon
+- Rename-Dialog: Chat-Titel ändern
+
+### Architect Summary / ArchitectSummaryScreen (Fullscreen-Dialog)
+
+- TopAppBar: „Projekt-Plan“ + Close
+- Projekt-Kontext-Card: Domain, Technologien, Level, Größe, Concerns
+- Roadmap-Sektion mit Phasen-Karten
+- Regeln-Sektion
+- Agenten-Sektion mit Edit-Button pro Agent
+- Edit-Dialog für System-Prompts
+- Aktionen: „Abbrechen“ und „Fertig!“
+
+## Navigation & Overlays
+
+Routen in `AppNavigation.kt`:
+
+- `projects` – Dashboard/Projektliste
+- `project/{projectId}` – Detail mit 3 Tabs
+- `create-agent/{projectId}` – Agent anlegen
+- `settings` – Einstellungen
+
+Overlays über der Navigation:
+
+- Chat-Modal bei ausgewählter Session
+- Architect-Summary bei `showArchitectSummary = true`
+- Loading-Overlay während Datei-Generierung
+- Toast bei Erfolg/Fehler der Generierung
+
+## Status
+
+Diese Datei beschreibt den aktuellen Implementierungsstand der UI. Nicht mehr
+vorhandene Screens (`IntroScreen`, `HomeScreen`, `AgentListScreen`) sind entfernt.
