@@ -70,6 +70,7 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
     val isGeneratingFiles by viewModel.isGeneratingFiles.collectAsState()
     val isTransferring by viewModel.isTransferring.collectAsState()
     val transferMessage by viewModel.transferMessage.collectAsState()
+    val agentTemplates by viewModel.agentTemplates.collectAsState()
     val topLevelDestination = resolveTopLevelDestination(currentRoute, selectedSession != null)
 
     // Generation-Complete Event: Toast bei Erfolg/Fehler
@@ -277,6 +278,13 @@ fun AppNavigation(viewModel: AgentViewModel = viewModel()) {
                         ollamaApiKey = credentials.ollamaApiKey,
                         openRouterApiKey = credentials.openRouterKey,
                         zenApiKey = credentials.zenKey,
+                        templates = agentTemplates,
+                        onSaveTemplate = { template ->
+                            viewModel.saveAgentTemplate(template)
+                        },
+                        onDeleteTemplate = { template ->
+                            viewModel.deleteAgentTemplate(template)
+                        },
                         projectId = projectId,
                         onNavigateBack = { navController.popBackStack() },
                         onCreateAgent = { name, description, provider, systemPrompt, model, temperature ->

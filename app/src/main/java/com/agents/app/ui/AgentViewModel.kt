@@ -14,7 +14,10 @@ import com.agents.app.data.ProviderCredentials
 import com.agents.app.data.ProviderCredentialsRepository
 import com.agents.app.models.*
 import com.agents.app.data.ProjectFileWriter
+import com.agents.app.data.AgentTemplate
+import com.agents.app.data.AgentTemplatesRepository
 import com.agents.app.data.ProjectTransferRepository
+import com.agents.app.data.getDefaultAgentTemplates
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Job
@@ -35,6 +38,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: AgentRepository
     private val credentialsRepository = ProviderCredentialsRepository(application)
     private val architectConfigRepository = ArchitectConfigRepository(application)
+    private val templatesRepository = AgentTemplatesRepository(application)
     private val transferRepository by lazy {
         ProjectTransferRepository(getApplication<AgentsApplication>().database, getApplication())
     }
@@ -151,6 +155,26 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
             repository.getAllProjects().collect { projectList ->
                 _projects.value = projectList
             }
+        }
+    }
+
+    // ===== AGENT TEMPLATES =====
+    val agentTemplates: StateFlow<List<AgentTemplate>> =
+        templatesRepository.templates.stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            getDefaultAgentTemplates()
+        )
+
+    fun saveAgentTemplate(template: AgentTemplate) {
+        viewModelScope.launch {
+            templatesRepository.saveTemplate(template)
+        }
+    }
+
+    fun deleteAgentTemplate(template: AgentTemplate) {
+        viewModelScope.launch {
+            templatesRepository.deleteTemplate(template.name)
         }
     }
 

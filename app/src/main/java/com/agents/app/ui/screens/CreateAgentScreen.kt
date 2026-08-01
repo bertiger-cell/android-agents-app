@@ -5,65 +5,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.agents.app.data.AgentTemplate
 import com.agents.app.models.AIProvider
 import com.agents.app.models.OllamaModel
 import com.agents.app.models.OpenAIModel
-
-private data class AgentTemplate(
-    val name: String,
-    val description: String,
-    val systemPrompt: String,
-    val provider: AIProvider,
-    val model: String,
-    val temperature: Float
-)
-
-private fun getDefaultTemplates(): List<AgentTemplate> = listOf(
-    AgentTemplate(
-        name = "Code Assistant",
-        description = "Hilft beim Programmieren, Debugging und Code-Review",
-        systemPrompt = "Du bist ein erfahrener Software-Entwickler. Hilf beim Programmieren, erkläre Code, finde Bugs und schlage Verbesserungen vor. Antworte präzise und gib konkrete Code-Beispiele.",
-        provider = AIProvider.OPENROUTER,
-        model = "openai/gpt-4o",
-        temperature = 0.3f
-    ),
-    AgentTemplate(
-        name = "Creative Writer",
-        description = "Kreatives Schreiben, Geschichten, Artikel",
-        systemPrompt = "Du bist ein kreativer Autor. Schreibe ansprechende Texte, Geschichten oder Artikel. Sei bildhaft, inspirierend und passe den Stil an den Kontext an.",
-        provider = AIProvider.OPENROUTER,
-        model = "openai/gpt-4o",
-        temperature = 0.9f
-    ),
-    AgentTemplate(
-        name = "Research Mode",
-        description = "Recherchiert Themen und fasst Ergebnisse zusammen",
-        systemPrompt = "Du bist ein fleißiger Researcher. Recherchiere Themen gründlich, fasse Zusammen, zitiere Quellen und strukturiere die Ergebnisse übersichtlich.",
-        provider = AIProvider.OPENROUTER,
-        model = "openai/gpt-4o",
-        temperature = 0.5f
-    ),
-    AgentTemplate(
-        name = "Translator",
-        description = "Übersetzt Texte zwischen Sprachen",
-        systemPrompt = "Du bist ein professioneller Übersetzer. Übersetze Texte genau und flüssig zwischen den gewünschten Sprachen. Behalte den Ton und die Bedeutung bei.",
-        provider = AIProvider.OPENROUTER,
-        model = "openai/gpt-4o",
-        temperature = 0.3f
-    ),
-    AgentTemplate(
-        name = "Local Ollama General",
-        description = "Allzweck-Assistent via Ollama (lokal)",
-        systemPrompt = "You are a helpful AI assistant.",
-        provider = AIProvider.OLLAMA,
-        model = "",
-        temperature = 0.7f
-    )
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,6 +31,9 @@ fun CreateAgentScreen(
     ollamaApiKey: String = "",
     openRouterApiKey: String = "",
     zenApiKey: String = "",
+    templates: List<AgentTemplate> = emptyList(),
+    onSaveTemplate: (AgentTemplate) -> Unit = {},
+    onDeleteTemplate: (AgentTemplate) -> Unit = {},
     onNavigateBack: () -> Unit,
     onCreateAgent: (
         name: String,
@@ -97,7 +52,6 @@ fun CreateAgentScreen(
     var selectedProvider by remember { mutableStateOf(AIProvider.OPENROUTER) }
     var selectedTemplate by remember { mutableStateOf<AgentTemplate?>(null) }
 
-    val templates = remember { getDefaultTemplates() }
     val aiProviders = AIProvider.entries
 
     // Prefill fields when template is selected
@@ -158,13 +112,28 @@ fun CreateAgentScreen(
                     templates.forEach { template ->
                         DropdownMenuItem(
                             text = {
-                                Column {
-                                    Text(template.name)
-                                    Text(
-                                        template.description,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(template.name)
+                                        Text(
+                                            template.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { onDeleteTemplate(template) },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Delete,
+                                            contentDescription = "Template loschen",
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             },
                             onClick = {
@@ -174,6 +143,27 @@ fun CreateAgentScreen(
                         )
                     }
                 }
+            }
+
+            OutlinedButton(
+                onClick = {
+                    val templateName = name.trim().ifBlank { "Template ${templates.size + 1}" }
+                    onSaveTemplate(
+                        AgentTemplate(
+                            name = templateName,
+                            description = description.trim(),
+                            systemPrompt = systemPrompt,
+                            provider = selectedProvider,
+                            model = model,
+                            temperature = temperature
+                        )
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Filled.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Als Template speichern")
             }
 
             Divider()
