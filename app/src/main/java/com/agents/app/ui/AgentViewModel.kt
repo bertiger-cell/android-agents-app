@@ -79,6 +79,9 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
     private val _transferMessage = MutableStateFlow<String?>(null)
     val transferMessage: StateFlow<String?> = _transferMessage.asStateFlow()
 
+    private val _uiError = MutableStateFlow<String?>(null)
+    val uiError: StateFlow<String?> = _uiError.asStateFlow()
+
     private val _pendingAttachments = MutableStateFlow<List<MessageAttachment>>(emptyList())
     val pendingAttachments: StateFlow<List<MessageAttachment>> = _pendingAttachments.asStateFlow()
 
@@ -176,13 +179,23 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     fun saveAgentTemplate(template: AgentTemplate) {
         viewModelScope.launch {
-            templatesRepository.saveTemplate(template)
+            try {
+                templatesRepository.saveTemplate(template)
+            } catch (e: Exception) {
+                Log.e("AgentViewModel", "Template speichern fehlgeschlagen", e)
+                _uiError.value = "Template konnte nicht gespeichert werden: ${e.message ?: "Unbekannter Fehler"}"
+            }
         }
     }
 
     fun deleteAgentTemplate(template: AgentTemplate) {
         viewModelScope.launch {
-            templatesRepository.deleteTemplate(template.name)
+            try {
+                templatesRepository.deleteTemplate(template.name)
+            } catch (e: Exception) {
+                Log.e("AgentViewModel", "Template loeschen fehlgeschlagen", e)
+                _uiError.value = "Template konnte nicht geloescht werden: ${e.message ?: "Unbekannter Fehler"}"
+            }
         }
     }
 
@@ -266,6 +279,10 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearTransferMessage() {
         _transferMessage.value = null
+    }
+
+    fun clearUiError() {
+        _uiError.value = null
     }
 
     fun selectProject(project: ProjectEntity) {
@@ -587,7 +604,7 @@ class AgentViewModel(application: Application) : AndroidViewModel(application) {
                 _pendingAttachments.value = _pendingAttachments.value + attachment
             } catch (e: Exception) {
                 Log.e("AgentViewModel", "Attachment failed", e)
-                _currentError.value =
+                _uiError.value =
                     "Anhang konnte nicht hinzugefuegt werden: ${e.message ?: "Unbekannter Fehler"}"
             }
         }

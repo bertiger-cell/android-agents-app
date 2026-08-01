@@ -48,6 +48,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -86,6 +88,8 @@ fun ChatScreen(
     attachmentsByMessage: Map<String, List<MessageAttachment>> = emptyMap(),
     onAttachmentPicked: (Uri) -> Unit = {},
     onRemovePendingAttachment: (MessageAttachment) -> Unit = {},
+    uiError: String? = null,
+    onClearUiError: () -> Unit = {},
     onSendMessage: (String, List<MessageAttachment>) -> Unit,
     onNavigateBack: () -> Unit,
     onSettings: () -> Unit = {},
@@ -98,6 +102,15 @@ fun ChatScreen(
     var showTitleDialog by remember { mutableStateOf(false) }
     var editTitle by rememberSaveable(session.id) { mutableStateOf(session.title) }
     val listState = rememberLazyListState()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiError) {
+        uiError?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            onClearUiError()
+        }
+    }
 
     val imageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia()
@@ -131,6 +144,7 @@ fun ChatScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
