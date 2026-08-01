@@ -15,9 +15,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.agents.app.data.ArchitectConfigRepository
 import com.agents.app.data.ProviderCredentials
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,6 +53,9 @@ fun SettingsScreen(
     var editedArchitectPrompt by remember { mutableStateOf(architectSystemPrompt) }
     var editedArchitectProvider by remember { mutableStateOf(architectProvider) }
     var editedArchitectModel by remember { mutableStateOf(architectModel) }
+    val context = LocalContext.current
+    val architectConfigRepository = remember(context) { ArchitectConfigRepository(context) }
+    val isArchitectEnabled by architectConfigRepository.isArchitectEnabled.collectAsState(initial = false)
 
     LaunchedEffect(credentials) {
         openRouterKey = credentials.openRouterKey
@@ -185,6 +190,42 @@ fun SettingsScreen(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Architect Discovery",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                "Auto-generate project structure and agents.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Switch(
+                            checked = isArchitectEnabled,
+                            onCheckedChange = { enabled ->
+                                architectConfigRepository.setArchitectEnabled(enabled)
+                            }
+                        )
+                    }
+
+                    if (isArchitectEnabled) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Enabled projects start with the Architect interview and generate the scaffold files automatically.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
