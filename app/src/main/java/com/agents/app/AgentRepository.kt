@@ -37,6 +37,15 @@ fun buildApiMessages(
     return messages
 }
 
+fun createProjectFolderStructure(folderPath: String): Boolean {
+    val root = File(folderPath)
+    val ready = root.mkdirs() || root.isDirectory
+    listOf("media", "audio", "exports").forEach { sub ->
+        File(root, sub).mkdirs()
+    }
+    return ready
+}
+
 sealed class ScaffoldParseResult {
     data class Success(val scaffold: ProjectScaffold) : ScaffoldParseResult()
     data class Error(val message: String, val cause: Throwable? = null) : ScaffoldParseResult()
@@ -64,7 +73,7 @@ class AgentRepository(
         val timestamp = System.currentTimeMillis()
 
         val folderPath = context.filesDir.path + "/projects/${name}_$projectId"
-        File(folderPath).mkdirs()
+        createProjectFolderStructure(folderPath)
         // Leeres Projekt-Tagebuch anlegen
         File(folderPath, "diary.md").writeText("# Project Diary – $name\n\n")
 

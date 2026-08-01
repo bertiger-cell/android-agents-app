@@ -203,6 +203,9 @@ class ProjectTransferRepository(
             "projects/${sanitizeFolderName(manifest.project.name)}_$newProjectId"
         )
         newFolder.mkdirs()
+        File(newFolder, "media").mkdirs()
+        File(newFolder, "audio").mkdirs()
+        File(newFolder, "exports").mkdirs()
 
         val projectEntity = ProjectEntity(
             id = newProjectId,
